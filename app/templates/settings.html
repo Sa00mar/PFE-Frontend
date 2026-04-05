@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4 mt-n2">
+    <h1 class="fw-800 text-dark mb-1">Paramètres</h1>
+    <p class="text-muted fw-400" style="font-size: 0.9rem;">Gérez vos informations personnelles et votre compte.</p>
+</div>
+
+<div class="content-area pt-0">
+    <div class="settings-container-centered mx-auto settings-page-wrapper">
+        <!-- Floating Header & Form Area -->
+        <div class="settings-form-area border-0 p-0">
+            <div class="settings-header-integrated mb-4 pb-4 border-bottom text-center">
+                <div class="d-flex flex-column align-items-center mb-0">
+                    <div class="icon-avatar-modern mb-3">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h2 class="h5 fw-700 text-dark mb-2">Mes Informations</h2>
+                    <p class="text-muted fw-400 small mb-0" style="font-size: 0.85rem;">
+                        Mettez à jour vos informations de profil.
+                    </p>
+                </div>
+            </div>
+
+            <form id="profileForm" class="form-body-modern">
+                <div class="mb-4">
+                    <label for="userName" class="label-modern">Nom complet</label>
+                    <input type="text" class="form-control input-modern" id="userName" value="Administrateur IA">
+                </div>
+
+                <div class="mb-4">
+                    <label for="userEmail" class="label-modern">Adresse E-mail</label>
+                    <input type="email" class="form-control input-modern text-muted readonly-input" id="userEmail"
+                        value="admin@testflow.com" readonly>
+                    <div class="info-alert-modern mt-3">
+                        <i class="fas fa-info-circle me-2"></i> L'adresse email est liée à votre compte et ne peut pas
+                        être modifiée.
+                    </div>
+                </div>
+
+                <div class="pt-4 text-center">
+                    <button type="button" class="btn btn-custom-save px-5 py-2 fw-bold w-100 btn-save-modern" id="updateBtn">
+                        Mettre à jour le profil
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

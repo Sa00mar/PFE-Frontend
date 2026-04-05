@@ -1,0 +1,116 @@
+/* MY TESTS PAGE - TESTFLOW REDESIGN */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+body {
+    font-family: 'Montserrat', sans-serif;
+}
+
+ h1, h3, .h3 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.text-muted {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+}
+
+/* SEARCH & FILTER SECTION */
+.search-section .input-modern {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0 15px;
+    transition: all 0.3s ease;
+}
+
+.search-section .input-modern:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.search-section .input-modern i {
+    color: #94a3b8;
+    margin-right: 12px;
+}
+
+.search-section .form-control {
+    border: none;
+    padding: 12px 0;
+    font-weight: 500;
+    background: transparent;
+}
+
+.search-section .form-control:focus {
+    box-shadow: none;
+}
+
+.select-modern {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: #475569;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.select-modern:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+/* TABLE STYLING */
+.table-transparent {
+    background: transparent;
+}
+
+.table-transparent thead th {
+    background: rgba(241, 245, 249, 0.5);
+    border-bottom: 2px solid #f1f5f9;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 15px 20px;
+}
+
+.table-transparent tbody td {
+    padding: 18px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.table-transparent tbody tr:hover {
+    background-color: rgba(248, 250, 252, 0.8);
+}
+
+/* BADGES */
+.badge-type, .badge-status {
+    padding: 6px 12px;
+    font-weight: 700;
+    font-size: 11px;
+    border-radius: 20px;
+}
+
+/* VIEW BUTTON */
+.btn-view-test {
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-view-test:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    color: white;
+}

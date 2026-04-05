@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Détail de l'Élément{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/test-details.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="detail-page-container">
+    <div class="detail-header">
+        <a href="{{ url_for('main.test_results') }}" class="btn-back-link mb-3 d-inline-block">
+            <i class="fas fa-arrow-left"></i> Retour aux résultats globaux
+        </a>
+        <div class="header-info">
+            <h1>Détail de l'élément : {{ test.name }}</h1>
+            <p class="text-muted">Analyse approfondie de l'étape de test individuelle.</p>
+        </div>
+    </div>
+
+    <div class="content-area pt-3">
+        <div class="details-main-grid">
+            <div class="screenshot-pane">
+                <div class="screenshot-wrapper {{ test.status }}">
+                    <img src="{{ test.screenshot }}" alt="Capture d'écran de {{ test.name }}" class="img-fluid">
+                    <div class="status-overlay-modern {{ test.status }}">
+                        <i class="fas {% if test.status == 'PASS' %}fa-check{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        {{ test.status }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-pane">
+                <div class="info-container">
+                    <div class="info-group mb-5">
+                        <label class="label-modern">Sélecteur Détecté</label>
+                        <div class="selector-box-modern">
+                            <code>{{ test.xpath }}</code>
+                            <button class="btn-copy-modern" onclick="copySelector('selectorText')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="info-grid-modern d-flex flex-wrap gap-5 mb-5">
+                        <div class="info-item">
+                            <label class="label-modern">Nom de l'élément</label>
+                            <p class="val-modern">{{ test.name }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label class="label-modern">Type de test</label>
+                            <p class="val-modern">{{ test.type }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label class="label-modern">Action de l'IA</label>
+                            <p class="val-modern">{{ test.action }}</p>
+                        </div>
+                    </div>
+
+                    {% if test.status == 'FAIL' %}
+                    <div class="error-box-modern mb-5">
+                        <div class="error-head">
+                            <i class="fas fa-exclamation-circle me-2"></i> Erreur Détectée
+                        </div>
+                        <div class="error-text">
+                            {{ test.error }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="actions-pane border-top pt-5">
+                        <button id="btn-rerun-element" class="btn-custom-primary btn-lg w-100 py-3 shadow-none fw-bold" data-test-id="{{ test.id }}">
+                            <i class="fas fa-redo me-2"></i> Ré-exécuter cet élément
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loader Modal for Rerun -->
+<div id="rerunLoader" class="loader-overlay d-none">
+    <div class="loader-content">
+        <div class="spinner-border text-primary spinner-rerun" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 fs-5 fw-bold text-white">Ré-exécution de l'élément en cours...</p>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/test_details.js') }}"></script>
+{% endblock %}

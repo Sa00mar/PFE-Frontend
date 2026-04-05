@@ -1,0 +1,124 @@
+/* HOME PAGE SPECIFIC STYLES - TESTFLOW REDESIGN (FLOATING CONTENT) */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f8fafc;
+    font-family: 'Montserrat', sans-serif;
+    color: #1f2937;
+}
+
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* MAIN CONTENT */
+.main-content {
+    margin-left: 220px;
+    padding: 40px 60px;
+    width: 100%;
+    transition: margin-left 0.3s ease;
+}
+
+.page-header {
+    margin-bottom: 40px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.content-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 200px);
+}
+
+.welcome-container {
+    text-align: center;
+    max-width: 700px;
+    width: 100%;
+    padding: 20px;
+}
+
+.welcome-title {
+    font-size: 34px;
+    color: #0f172a;
+    margin-bottom: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.welcome-desc {
+    font-size: 1.1rem;
+    color: #64748b;
+    margin-bottom: 40px;
+    line-height: 1.6;
+    font-weight: 500;
+}
+
+.btn-create-test {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 38px;
+    background: #2563eb;
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-create-test:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-create-test:active {
+    transform: translateY(0);
+}
+
+.btn-create-test i {
+    font-size: 20px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+    .main-content {
+        margin-left: 0;
+        padding: 30px;
+        padding-top: 80px;
+    }
+
+    .content-area {
+        min-height: auto;
+        padding-top: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 24px;
+    }
+
+    .welcome-title {
+        font-size: 26px;
+    }
+}

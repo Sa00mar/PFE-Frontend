@@ -1,0 +1,182 @@
+/* NEW TEST PAGE - TESTFLOW REDESIGN */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+.content-area {
+    font-family: 'Montserrat', sans-serif;
+}
+
+.step-container {
+    padding: 60px 20px;
+    margin-bottom: 30px;
+    transition: all 0.4s ease;
+}
+
+/* URL INPUT STYLING */
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper:hover {
+    border-color: #94a3b8;
+}
+
+.input-wrapper:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.input-icon {
+    padding: 0 20px;
+    font-size: 18px;
+}
+
+.input-wrapper .form-control {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.input-wrapper .form-control::placeholder {
+    color: #94a3b8;
+}
+
+/* BUTTONS */
+.btn-custom-primary {
+    background: #2563eb; /* Primary login button color */
+    color: white;
+    border: none;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-custom-primary:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+    color: white;
+}
+
+.btn-custom-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-custom-outline:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #1e293b;
+    transform: translateY(-2px);
+}
+
+/* LOADER & SUCCESS REFINEMENTS */
+.fw-800 { font-weight: 800; }
+.fw-700 { font-weight: 700; }
+.fw-400 { font-weight: 400; }
+
+.loader-section-modern, .success-section-modern {
+    font-family: 'Montserrat', sans-serif;
+}
+
+.spinner-modern {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner-ring {
+    width: 80px;
+    height: 80px;
+    border: 5px solid rgba(37, 99, 235, 0.1);
+    border-top: 5px solid #2563eb;
+    border-radius: 50%;
+    animation: spin-premium 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+@keyframes spin-premium {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.url-display-pill {
+    display: inline-block;
+    background: rgba(37, 99, 235, 0.05);
+    color: #2563eb;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid rgba(37, 99, 235, 0.1);
+}
+
+.success-icon-modern {
+    font-size: 60px;
+    color: #10b981;
+    display: inline-block;
+    filter: drop-shadow(0 8px 12px rgba(16, 185, 129, 0.1));
+}
+
+.btn-reset-link {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    padding: 10px 20px;
+    border-radius: 30px;
+}
+
+.btn-reset-link:hover {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.05);
+}
+
+/* REFACTORING: Externalizing Inline Styles */
+.icon-globe-wrapper {
+    width: 60px; 
+    height: 60px;
+}
+
+.analysis-form-container {
+    max-width: 650px;
+}
+
+.loader-text, .success-text {
+    max-width: 500px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.success-text {
+    max-width: 550px;
+}
+
+.success-actions-container {
+    max-width: 400px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .step-container {
+        padding: 40px 15px;
+    }
+
+    .form-group {
+        flex-direction: column;
+    }
+
+    .success-icon-modern {
+        font-size: 45px;
+    }
+}

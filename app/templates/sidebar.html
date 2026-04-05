@@ -1,0 +1,60 @@
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ url_for('main.home') }}" class="sidebar-logo-link">
+            <img src="{{ url_for('static', filename='img/Logo_test.jpg') }}" alt="TestFlow Logo"
+                class="sidebar-logo-img">
+        </a>
+        <h1 class="sidebar-brand-name">TestFlow</h1>
+    </div>
+
+    <ul class="sidebar-menu">
+        <li>
+            <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                Accueil
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('main.new_test') }}"
+                class="{% if request.endpoint == 'main.new_test' %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i>
+                Nouveau Test
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('main.my_tests') }}"
+                class="{% if request.endpoint == 'main.my_tests' %}active{% endif %}">
+                <i class="fas fa-tasks"></i>
+                Mes Tests
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('main.settings') }}"
+                class="{% if request.endpoint == 'main.settings' %}active{% endif %}">
+                <i class="fas fa-user-cog"></i>
+                Paramètres
+            </a>
+        </li>
+    </ul>
+
+    <div class="user-section">
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-name">
+                <p id="sidebarUserName">AdministrateurIA</p>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span>En ligne</span>
+                </div>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('main.logout') }}">
+            <button type="submit" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </button>
+        </form>
+    </div>
+</div>

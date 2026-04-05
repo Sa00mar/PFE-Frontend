@@ -1,0 +1,107 @@
+/* SETTINGS PAGE - TESTFLOW REDESIGN */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+.content-area, .page-header {
+    font-family: 'Montserrat', sans-serif;
+}
+
+.fw-800 { font-weight: 800; }
+.fw-700 { font-weight: 700; }
+.fw-400 { font-weight: 400; }
+
+.settings-container-centered {
+    background: transparent;
+    padding-bottom: 20px;
+    margin-top: -10px;
+}
+
+.settings-header-integrated {
+    text-align: center;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+}
+
+/* SIDEBAR INFO */
+.icon-avatar-modern {
+    width: 42px;
+    height: 42px;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* FORM STYLING */
+.form-body-modern {
+    max-width: 100%;
+}
+
+.label-modern {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.input-modern {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1e293b;
+    transition: all 0.3s ease;
+}
+
+.input-modern:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05) !important;
+    outline: none;
+}
+
+.info-alert-modern {
+    background: rgba(37, 99, 235, 0.04);
+    border: 1px solid rgba(37, 99, 235, 0.1);
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 0.8rem;
+    color: #2563eb;
+    font-weight: 500;
+}
+
+/* BUTTONS */
+.btn-custom-save {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.btn-custom-save:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+/* REFACTORING: Externalizing Inline Styles */
+.settings-page-wrapper {
+    max-width: 600px;
+}
+
+.readonly-input {
+    background: rgba(15, 23, 42, 0.02) !important;
+}
+
+.btn-save-modern {
+    max-width: 300px;
+}

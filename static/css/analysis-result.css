@@ -1,0 +1,141 @@
+/* ANALYSIS RESULT PAGE - TESTFLOW REDESIGN */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+.content-area {
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* TABLE CONTAINER & HEADER */
+.table-container {
+    background: transparent;
+}
+
+.table-header {
+    margin-bottom: 25px;
+}
+
+.badge-count {
+    font-size: 13px;
+}
+
+/* TABLE STYLING */
+.table-transparent {
+    background: transparent;
+    border-collapse: separate;
+    border-spacing: 0 12px; /* Adds space between rows */
+}
+
+.table-transparent thead th {
+    background: rgba(241, 245, 249, 0.5);
+    border-bottom: 2px solid #f1f5f9;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    padding: 15px 20px;
+}
+
+.table-transparent tbody tr {
+    background-color: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-transparent tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+}
+
+/* REFACTORING: Externalizing Inline Styles */
+.col-check {
+    width: 50px;
+}
+
+.col-xpath {
+    max-width: 150px;
+}
+
+.table-transparent tbody td {
+    padding: 20px;
+    border: none !important;
+}
+
+.table-transparent tbody tr td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.table-transparent tbody tr td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* ELEMENT BADGES */
+.element-badge {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 18px;
+}
+
+.badge-pill-custom {
+    padding: 6px 12px;
+    font-weight: 700;
+    font-size: 10px;
+}
+
+/* BUTTONS */
+.btn-custom-primary {
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-custom-primary:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+    color: white;
+}
+
+.btn-custom-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-weight: 700;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-custom-outline:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #1e293b;
+    transform: translateY(-2px);
+}
+
+/* FOOTER ACTIONS */
+.footer-actions {
+    margin-top: 30px;
+}
+
+/* FORM CHECK */
+.form-check-input:checked {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+/* CODE FONT */
+code {
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+}

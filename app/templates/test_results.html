@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Résultats Globaux{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/test_results.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="results-container pt-3">
+    <!-- Header Section (Modern & Minimalist) -->
+    <header class="results-header pt-4 pb-4">
+        <div class="header-main-modern d-flex justify-content-between align-items-center flex-wrap gap-4">
+            <div class="header-info">
+                <a href="{{ url_for('main.my_tests') }}" class="btn-back-link-modern mb-3 d-inline-block">
+                    <i class="fas fa-arrow-left me-2"></i> Retour à Mes Tests
+                </a>
+                <h1 class="fw-800 text-dark mb-2 title-modern">Résultat de l'exécution</h1>
+                <div class="meta-info-modern d-flex align-items-center gap-4 text-muted meta-info-container">
+                    <span class="url-text-modern"><i class="fas fa-link me-2 text-primary"></i>{{ data.url }}</span>
+                    <span><i class="far fa-calendar me-2"></i>{{ data.date }} à {{ data.time }}</span>
+                    <span><i class="fas fa-code-branch me-2"></i>v{{ data.version }}</span>
+                </div>
+            </div>
+
+            <div class="header-stats-modern d-flex align-items-center gap-3">
+                <div class="stat-pill-modern pass">
+                    <span class="stat-icon-wrapper"><i class="fas fa-check"></i></span>
+                    <div class="stat-content">
+                        <span class="count">{{ data.stats.pass }}</span>
+                        <span class="lab">PASS</span>
+                    </div>
+                </div>
+                <div class="stat-pill-modern fail">
+                    <span class="stat-icon-wrapper"><i class="fas fa-xmark"></i></span>
+                    <div class="stat-content">
+                        <span class="count">{{ data.stats.fail }}</span>
+                        <span class="lab">FAIL</span>
+                    </div>
+                </div>
+                {% if data.stats.warning %}
+                <div class="stat-pill-modern warning">
+                    <span class="stat-icon-wrapper"><i class="fas fa-exclamation-triangle"></i></span>
+                    <div class="stat-content">
+                        <span class="count">{{ data.stats.warning }}</span>
+                        <span class="lab">WARNING</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="stat-pill-modern info">
+                    <span class="stat-icon-wrapper"><i class="far fa-clock"></i></span>
+                    <div class="stat-content">
+                        <span class="count">{{ data.total_time }}</span>
+                        <span class="lab">DURÉE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="actions-bar-modern py-4 d-flex justify-content-between align-items-center flex-wrap gap-4">
+        <div class="filters-modern d-flex gap-2">
+            <button class="filter-btn active" data-filter="all">Tous ({{ data.stats.total }})</button>
+            <button class="filter-btn" data-filter="PASS">PASS ({{ data.stats.pass }})</button>
+            <button class="filter-btn" data-filter="FAIL">FAIL ({{ data.stats.fail }})</button>
+            <button class="filter-btn" data-filter="WARNING">WARNING ({{ data.stats.warning or 0 }})</button>
+        </div>
+        <div class="search-box-modern flex-grow-1 mx-lg-4" style="max-width: 400px;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="testSearch" placeholder="Rechercher un élément...">
+        </div>
+        <div class="global-actions-modern d-flex gap-3">
+            <button class="btn-action-outline fw-bold" onclick="downloadReport()">
+                <i class="fas fa-download me-2"></i> Télécharger
+            </button>
+            <button class="btn-action-primary fw-bold" onclick="rerunFullTest()">
+                <i class="fas fa-redo me-2"></i> Ré-exécuter
+            </button>
+        </div>
+    </div>
+
+    <!-- Results Grid -->
+    <div class="results-grid mt-4" id="resultsGrid">
+        {% for test in data.results %}
+        <div class="test-card-modern {{ test.status }}" data-status="{{ test.status }}" data-name="{{ test.name }}">
+            <a href="{{ url_for('main.test_details', element_id=test.id) }}" class="card-link-wrapper">
+                <div class="card-screenshot-modern">
+                    <img src="{{ test.screenshot }}" alt="{{ test.name }}">
+                    <div class="status-overlay-modern {{ test.status }}">
+                        <i
+                            class="fas {% if test.status == 'PASS' %}fa-check{% elif test.status == 'FAIL' %}fa-xmark{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        {{ test.status }}
+                    </div>
+                </div>
+                <div class="card-body-modern p-4">
+                    <h3 class="h5 fw-bold text-dark mb-1">{{ test.name }}</h3>
+                    <p class="text-muted small fw-medium mb-3">{{ test.type }}</p>
+
+                    {% if test.status == 'FAIL' or test.status == 'WARNING' %}
+                    <div class="error-strip mb-3 {% if test.status == 'WARNING' %}bg-warning bg-opacity-10 text-warning border-warning{% endif %}">
+                        <i class="fas {% if test.status == 'FAIL' %}fa-exclamation-circle{% else %}fa-circle-info{% endif %} me-2"></i>
+                        {{ test.error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="info-row-minimal">
+                        <span class="lab">Sélecteur:</span>
+                        <code class="val text-truncate">{{ test.xpath }}</code>
+                    </div>
+                    <div class="info-row-minimal">
+                        <span class="lab">Action:</span>
+                        <span class="val">{{ test.action }}</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/test_results.js') }}"></script>
+{% endblock %}
