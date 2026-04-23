@@ -1,89 +1,137 @@
+
 function validateUrlBtn(btn) {
     const urlInput = document.getElementById('urlInput');
-    if(!urlInput.checkValidity()) {
+    const messageBox = document.getElementById('urlValidationMessage');
+
+    if (messageBox) {
+        messageBox.textContent = '';
+        messageBox.className = 'mt-2 small';
+    }
+
+    if (!urlInput.checkValidity()) {
         urlInput.reportValidity();
         return;
     }
-    
+
     const originalContent = btn.innerHTML;
+
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-primary me-2"></i> Vérif...';
     btn.disabled = true;
-    
-    setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-check text-success me-2"></i> Valide';
-        btn.classList.add('border-success', 'bg-success', 'bg-opacity-10');
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-            btn.classList.remove('border-success', 'bg-success', 'bg-opacity-10');
-        }, 2500);
-    }, 1000);
-}
 
-function startAnalysis() {
-    const urlInput = document.getElementById('urlInput');
-    if(!urlInput.checkValidity()) {
-        urlInput.reportValidity();
-        return;
-    }
+    const formData = new FormData();
+    formData.append('url', urlInput.value);
 
-    // Cacher fomulaire, Afficher le loader
-    document.getElementById('step-form').classList.add('d-none');
-    document.getElementById('step-loader').classList.remove('d-none');
-    
-    // MAJ de l'URL dans le loader
-    document.getElementById('targetUrlDisplay').textContent = urlInput.value;
+    fetch('/validate_url', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check text-success me-2"></i> Valide';
+                btn.classList.add('border-success', 'bg-success', 'bg-opacity-10');
 
-    // Simulation de la durée d'analyse IA (~3.5 secondes)
-    setTimeout(() => {
-        // Cacher le loader, afficher le message de succès avec les boutons
-        document.getElementById('step-loader').classList.add('d-none');
-        document.getElementById('step-success').classList.remove('d-none');
-    }, 3500);
-}
+                if (messageBox) {
+                    messageBox.textContent = data.message;
+                    messageBox.classList.add('text-success');
+                }
+            } else {
+                btn.innerHTML = '<i class="fas fa-times text-danger me-2"></i> Invalide';
+                btn.classList.add('border-danger', 'bg-danger', 'bg-opacity-10');
 
-function resetForm() {
-    document.getElementById('urlInput').value = '';
-    document.getElementById('step-success').classList.add('d-none');
-    document.getElementById('step-form').classList.remove('d-none');
-}
+                if (messageBox) {
+                    messageBox.textContent = data.message;
+                    messageBox.classList.add('text-danger');
+                }
+            }
 
-function runAllDirectly() {
-    const btn = document.getElementById('btn-run-all');
-    if (!btn) return;
-    
-    const originalContent = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i> Démarrage des tests...';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Exécution en cours !';
-        btn.classList.replace('btn-custom-primary', 'btn-success');
-        
-        setTimeout(() => {
-            // Automatic redirection to results page
-            window.location.href = '/test_results';
-        }, 1500);
-    }, 1500);
-}
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                btn.classList.remove(
+                    'border-success',
+                    'bg-success',
+                    'bg-opacity-10',
+                    'border-danger',
+                    'bg-danger'
+                );
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
 
-// --- Event Listeners for Modern Structure ---
-document.addEventListener('DOMContentLoaded', function() {
-    const btnViewResults = document.getElementById('btn-view-results');
-    const btnRunAll = document.getElementById('btn-run-all');
-    const btnReset = document.getElementById('btn-reset');
+            btn.innerHTML = '<i class="fas fa-times text-danger me-2"></i> Erreur';
+            btn.classList.add('border-danger', 'bg-danger', 'bg-opacity-10');
 
-    if (btnViewResults) {
-        btnViewResults.addEventListener('click', () => {
-            window.location.href = '/analysis_result';
+            if (messageBox) {
+                messageBox.textContent = "Erreur lors de la validation de l'URL.";
+                messageBox.classList.add('text-danger');
+            }
+
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                btn.classList.remove('border-danger', 'bg-danger', 'bg-opacity-10');
+            }, 1500);
         });
-    }
+}
 
-    if (btnRunAll) {
-        btnRunAll.addEventListener('click', runAllDirectly);
-    }
+// ==========================
+// FORM SUBMIT (IMPORTANT)
+// ==========================
+document.addEventListener('DOMContentLoaded', function () {
 
-    if (btnReset) {
-        btnReset.addEventListener('click', resetForm);
-    }
+    const form = document.getElementById('analysisForm');
+
+    form.addEventListener('submit', function () {
+
+        const btn = document.getElementById('btn-launch');
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Analyse en cours...';
+        btn.disabled = true;
+
+        // PAS fetch → on laisse Flask gérer redirect
+    });
+
 });
+
+
+// ==========================
+// EVENT BUTTONS ANALYSIS RESULT PAGE
+// ==========================
+const btnViewResults = document.getElementById('btn-view-results');
+const btnRunAll = document.getElementById('btn-run-all');
+const btnReset = document.getElementById('btn-reset');
+
+if (btnViewResults) {
+    btnViewResults.addEventListener('click', () => {
+        window.location.href = `/analysis_result/${analysisId}`;
+    });
+}
+
+if (btnRunAll) {
+    btnRunAll.addEventListener('click', function () {
+
+        const btn = this;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i> Exécution...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Terminé';
+
+            setTimeout(() => {
+                window.location.href = '/test_results';
+            }, 1200);
+
+        }, 1500);
+    });
+}
+
+if (btnReset) {
+    btnReset.addEventListener('click', () => {
+        document.getElementById('urlInput').value = '';
+        document.getElementById('step-success')?.classList.add('d-none');
+        document.getElementById('step-form')?.classList.remove('d-none');
+    });
+}
+

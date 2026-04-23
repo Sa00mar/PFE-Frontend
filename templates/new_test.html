@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Lancer une Analyse{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/new-test.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="h3 fw-bold text-dark">Lancer une Analyse</h1>
+    <p class="text-muted">Analysez le DOM de votre cible web.</p>
+</div>
+
+<div class="content-area pt-2">
+
+    <!-- FORMULAIRE -->
+    <div class="step-container" id="step-form">
+
+        <form id="analysisForm" method="POST" class="mx-auto analysis-form-container">
+            <div class="form-group mb-4 d-flex flex-column flex-sm-row gap-3">
+
+                <div
+                    class="input-wrapper shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-25 flex-grow-1">
+
+                    <span class="input-icon">
+                        <i class="fas fa-link text-primary opacity-75"></i>
+                    </span>
+
+                    <input type="url" class="form-control border-0 bg-white py-3" id="urlInput" name="url"
+                        placeholder="https://votre-site.com" required>
+
+                </div>
+
+                <button type="button" id="btn-validate-url"
+                    class="btn btn-custom-outline shadow-sm px-4 fw-bold rounded-3" onclick="validateUrlBtn(this)">
+                    <i class="fas fa-check-circle text-success me-2"></i> Valider
+                </button>
+
+            </div>
+            <div id="urlValidationMessage" class="mt-2 small"></div>
+            <button type="submit" class="btn btn-custom-primary btn-lg w-100 py-3 rounded-3" id="btn-launch">
+                Lancer l'analyse
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/new_test.js') }}"></script>
+{% endblock %}

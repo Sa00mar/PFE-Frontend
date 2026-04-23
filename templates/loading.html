@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Analyse en cours</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+</head>
+
+<body>
+
+    <div class="loading-container">
+
+        <div class="spinner"></div>
+
+        <h2>Analyse en cours...</h2>
+        <p>Veuillez patienter</p>
+
+    </div>
+
+    <script>
+        function checkStatus() {
+            fetch("/check_status/{{ analysis_id }}")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "completed") {
+                        window.location.href = "/analysis_result/{{ analysis_id }}";
+                    }
+                });
+        }
+
+        setInterval(checkStatus, 2000);
+    </script>
+
+</body>
+
+</html>

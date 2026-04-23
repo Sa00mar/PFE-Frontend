@@ -2,13 +2,13 @@
  * ANALYSIS RESULT PAGE SCRIPTS
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const selectAllCheckbox = document.getElementById('selectAll');
     const elementCheckboxes = document.querySelectorAll('.element-checkbox');
     const selectionCountSpan = document.getElementById('selectionCount');
     const btnRunSelected = document.getElementById('btn-run-selected');
     const btnRunAll = document.getElementById('btn-run-all');
-    
+
     // Create Loader Overlay (if not in HTML)
     if (!document.getElementById('analysisLoader')) {
         const loader = document.createElement('div');
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         selectionCountSpan.textContent = `${checkedCount} élément${checkedCount > 1 ? 's' : ''} sélectionné${checkedCount > 1 ? 's' : ''}`;
     }
 
-    selectAllCheckbox.addEventListener('change', function() {
+    selectAllCheckbox.addEventListener('change', function () {
         elementCheckboxes.forEach(cb => {
             cb.checked = selectAllCheckbox.checked;
         });
@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function runTests(selectedOnly = true) {
         const analysisLoader = document.getElementById('analysisLoader');
         analysisLoader.classList.remove('d-none');
-        
+
         // Simuler un délai d'exécution (mock)
         setTimeout(() => {
             analysisLoader.classList.add('d-none');
             // Rediriger vers la page des résultats après exécution fictive
-            window.location.href = '/test_results';
+            window.location.href = `/test_results/${analysisId}`;
         }, 3000);
     }
 

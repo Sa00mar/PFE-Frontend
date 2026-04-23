@@ -1,0 +1,45 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #0f172a;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+/* container */
+.loading-container {
+    text-align: center;
+    margin-top: 15%;
+}
+
+/* spinner */
+.spinner {
+    width: 80px;
+    height: 80px;
+    border: 8px solid #334155;
+    border-top: 8px solid #38bdf8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: auto;
+    margin-bottom: 20px;
+}
+
+/* animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* text */
+h2 {
+    margin-bottom: 10px;
+}
+
+p {
+    color: #94a3b8;
+}
