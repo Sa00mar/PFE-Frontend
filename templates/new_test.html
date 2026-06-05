@@ -7,17 +7,21 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="page-header mb-4">
     <h1 class="h3 fw-bold text-dark">Lancer une Analyse</h1>
-    <p class="text-muted">Analysez le DOM de votre cible web.</p>
+    <p class="text-muted">
+        Analysez automatiquement un site web et générez des cas de tests IA.
+    </p>
 </div>
 
 <div class="content-area pt-2">
 
-    <!-- FORMULAIRE -->
     <div class="step-container" id="step-form">
 
-        <form id="analysisForm" method="POST" class="mx-auto analysis-form-container">
+        <form id="analysisForm" method="POST" autocomplete="off" class="mx-auto analysis-form-container">
+
+            <!-- URL -->
             <div class="form-group mb-4 d-flex flex-column flex-sm-row gap-3">
 
                 <div
@@ -27,20 +31,78 @@
                         <i class="fas fa-link text-primary opacity-75"></i>
                     </span>
 
-                    <input type="url" class="form-control border-0 bg-white py-3" id="urlInput" name="url"
-                        placeholder="https://votre-site.com" required>
+                    <input type="text" class="form-control border-0 bg-white py-3" id="urlInput" name="target_url"
+                        placeholder="https://votre-site.com" inputmode="url" autocomplete="off" data-lpignore="true"
+                        data-1p-ignore="true" spellcheck="false" autocorrect="off" autocapitalize="off" required>
 
                 </div>
 
                 <button type="button" id="btn-validate-url"
                     class="btn btn-custom-outline shadow-sm px-4 fw-bold rounded-3" onclick="validateUrlBtn(this)">
-                    <i class="fas fa-check-circle text-success me-2"></i> Valider
+
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    Valider
+
                 </button>
 
             </div>
+
             <div id="urlValidationMessage" class="mt-2 small"></div>
+
+            <!-- AUTH -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+
+                <div class="form-check mb-3">
+
+                    <input class="form-check-input" type="checkbox" id="authRequired" name="auth_required" value="yes">
+
+                    <label class="form-check-label fw-bold fs-5" for="authRequired">
+                        Analyse avec connexion
+                    </label>
+
+                </div>
+
+                <p class="text-muted mb-4">
+                    Utilisez uniquement un compte de test.
+                    Les identifiants ne seront pas sauvegardés.
+                </p>
+
+                <!-- Champs cachés -->
+                <div id="authFields" class="d-none">
+
+                    <!-- EMAIL -->
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Email de test
+                        </label>
+
+                        <input type="email" class="form-control" id="loginEmail" name="login_email"
+                            placeholder="test@example.com" autocomplete="username" disabled>
+
+                    </div>
+
+                    <!-- PASSWORD -->
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Mot de passe de test
+                        </label>
+
+                        <input type="password" class="form-control" id="loginPassword" name="login_password"
+                            placeholder="Mot de passe du compte test" autocomplete="current-password" disabled>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- SUBMIT -->
             <button type="submit" class="btn btn-custom-primary btn-lg w-100 py-3 rounded-3" id="btn-launch">
+
                 Lancer l'analyse
+
             </button>
 
         </form>
@@ -48,8 +110,51 @@
     </div>
 
 </div>
+
 {% endblock %}
 
+
 {% block scripts %}
+
 <script src="{{ url_for('static', filename='js/new_test.js') }}"></script>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const authRequired = document.getElementById("authRequired");
+
+        const authFields = document.getElementById("authFields");
+
+        const loginEmail = document.getElementById("loginEmail");
+
+        const loginPassword = document.getElementById("loginPassword");
+
+        authRequired.addEventListener("change", function () {
+
+            if (authRequired.checked) {
+
+                authFields.classList.remove("d-none");
+
+                loginEmail.disabled = false;
+
+                loginPassword.disabled = false;
+
+            } else {
+
+                authFields.classList.add("d-none");
+
+                loginEmail.disabled = true;
+
+                loginPassword.disabled = true;
+
+                loginEmail.value = "";
+
+                loginPassword.value = "";
+            }
+        });
+    });
+
+</script>
+
 {% endblock %}

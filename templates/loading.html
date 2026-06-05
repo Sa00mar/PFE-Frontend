@@ -27,6 +27,12 @@
                     if (data.status === "completed") {
                         window.location.href = "/analysis_result/{{ analysis_id }}";
                     }
+                    if (data.status === "failed") {
+
+                        alert("Analyse échouée.");
+
+                        window.location.href = "/new_test";
+                    }
                 });
         }
 

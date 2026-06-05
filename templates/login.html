@@ -48,12 +48,12 @@
                         {% endif %}
                         {% endwith %}
 
-                        <form class="auth-form" method="POST">
+                        <form class="auth-form" method="POST" autocomplete="off">
 
                             <div class="form-group">
                                 <label for="email">Email</label>
                                 <input type="email" id="email" name="email" class="form-control"
-                                    placeholder="votre@email.com" required autocomplete="email">
+                                    placeholder="votre@email.com" required autocomplete="off">
                             </div>
 
                             <div class="form-group">
@@ -63,7 +63,7 @@
                                 </div>
 
                                 <input type="password" id="password" name="password" class="form-control"
-                                    placeholder="••••••••" required autocomplete="current-password">
+                                    placeholder="••••••••" required autocomplete="new-password">
                             </div>
 
                             <div class="form-check mb-4">

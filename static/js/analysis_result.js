@@ -4,12 +4,12 @@
 
 document.addEventListener('DOMContentLoaded', function () {
     const selectAllCheckbox = document.getElementById('selectAll');
-    const elementCheckboxes = document.querySelectorAll('.element-checkbox');
     const selectionCountSpan = document.getElementById('selectionCount');
     const btnRunSelected = document.getElementById('btn-run-selected');
     const btnRunAll = document.getElementById('btn-run-all');
+    const btnReAnalyze = document.getElementById('btn-re-analyze');
 
-    // Create Loader Overlay (if not in HTML)
+    // Loader
     if (!document.getElementById('analysisLoader')) {
         const loader = document.createElement('div');
         loader.id = 'analysisLoader';
@@ -20,55 +20,101 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <h3 class="mt-4 text-white fw-bold">Exécution des tests en cours...</h3>
-                <p class="text-white-50">Analyse des scénarios et capture des résultats.</p>
+                <p class="text-white-50">Traitement des cas de test sélectionnés.</p>
             </div>
         `;
         document.body.appendChild(loader);
     }
 
-    // --- 1. Selection Logic ---
-    function updateCount() {
-        const checkedCount = document.querySelectorAll('.element-checkbox:checked').length;
-        selectionCountSpan.textContent = `${checkedCount} élément${checkedCount > 1 ? 's' : ''} sélectionné${checkedCount > 1 ? 's' : ''}`;
+    function getTestCheckboxes() {
+        return document.querySelectorAll('.element-checkbox');
     }
 
-    selectAllCheckbox.addEventListener('change', function () {
-        elementCheckboxes.forEach(cb => {
-            cb.checked = selectAllCheckbox.checked;
-        });
-        updateCount();
-    });
+    function updateCount() {
+        const checkedCount = document.querySelectorAll('.element-checkbox:checked').length;
 
-    elementCheckboxes.forEach(cb => {
+        if (selectionCountSpan) {
+            selectionCountSpan.textContent =
+                `${checkedCount} test${checkedCount > 1 ? 's' : ''} sélectionné${checkedCount > 1 ? 's' : ''}`;
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+            getTestCheckboxes().forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateCount();
+        });
+    }
+
+    getTestCheckboxes().forEach(cb => {
         cb.addEventListener('change', updateCount);
     });
 
-    // --- 2. Execution Logic with Loader ---
     function runTests(selectedOnly = true) {
         const analysisLoader = document.getElementById('analysisLoader');
         analysisLoader.classList.remove('d-none');
 
-        // Simuler un délai d'exécution (mock)
-        setTimeout(() => {
-            analysisLoader.classList.add('d-none');
-            // Rediriger vers la page des résultats après exécution fictive
-            window.location.href = `/test_results/${analysisId}`;
-        }, 3000);
+        let selectedIds = [];
+
+        if (selectedOnly) {
+            selectedIds = Array.from(document.querySelectorAll('.element-checkbox:checked'))
+                .map(cb => parseInt(cb.value))
+                .filter(id => !isNaN(id));
+
+            if (selectedIds.length === 0) {
+                analysisLoader.classList.add('d-none');
+                alert("Veuillez sélectionner au moins un test.");
+                return;
+            }
+        }
+
+        fetch(`/run_tests/${analysisId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                selected_only: selectedOnly,
+                selected_ids: selectedIds
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                analysisLoader.classList.add('d-none');
+
+                if (data.success) {
+                    window.location.href = `/test_results/${analysisId}`;
+                } else {
+                    alert("Erreur lors de l'exécution des tests.");
+                }
+            })
+            .catch(error => {
+                analysisLoader.classList.add('d-none');
+                console.error(error);
+                alert("Erreur backend lors de l'exécution.");
+            });
     }
 
-    btnRunSelected.addEventListener('click', () => runTests(true));
-    btnRunAll.addEventListener('click', () => runTests(false));
+    if (btnRunSelected) {
+        btnRunSelected.addEventListener('click', () => runTests(true));
+    }
 
-    // --- 3. Redirects ---
-    const btnReAnalyze = document.getElementById('btn-re-analyze');
+    if (btnRunAll) {
+        btnRunAll.addEventListener('click', () => runTests(false));
+    }
+
     if (btnReAnalyze) {
         btnReAnalyze.addEventListener('click', () => {
             window.location.href = '/new_test';
         });
     }
+
+    updateCount();
 });
 
-// Reuse loader CSS
+// Loader CSS
 const loaderStyle = document.createElement('style');
 loaderStyle.textContent = `
 .loader-overlay {
@@ -82,6 +128,9 @@ loaderStyle.textContent = `
     z-index: 10000;
     flex-direction: column;
 }
-.loader-content { text-align: center; color: white; }
+.loader-content {
+    text-align: center;
+    color: white;
+}
 `;
 document.head.appendChild(loaderStyle);
