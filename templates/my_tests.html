@@ -9,7 +9,9 @@
 {% block content %}
 <div class="mb-4">
   <h1 class="h3 mb-1">Mes Tests</h1>
-  <p class="text-muted mb-0">Liste de tous les tests effectués et leurs résultats</p>
+  <p class="text-muted mb-0">
+    Liste des URLs analysées avec leur dernière exécution et leur statut global.
+  </p>
 </div>
 
 <div class="search-section mb-4">
@@ -17,14 +19,17 @@
     <div class="col-md-8">
       <div class="input-modern">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" class="form-control" placeholder="Rechercher un test..." />
+        <input type="search" id="testSearch" class="form-control" placeholder="Rechercher une URL..." />
       </div>
     </div>
+
     <div class="col-md-4">
-      <select class="form-select select-modern">
-        <option selected>Tous les statuts</option>
+      <select class="form-select select-modern" id="statusFilter">
+        <option value="all" selected>Tous les statuts</option>
         <option value="pass">PASS</option>
         <option value="fail">FAIL</option>
+        <option value="pending">PENDING</option>
+        <option value="not_executed">Non exécuté</option>
       </select>
     </div>
   </div>
@@ -32,69 +37,108 @@
 
 <div class="table-container pt-2">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 table-transparent">
+    <table class="tests-table">
       <thead>
         <tr>
-          <th>Test</th>
           <th>URL</th>
-          <th>Date</th>
-          <th>Version</th>
-          <th>Type</th>
+          <th>Dernière analyse</th>
+          <th>Dernière exécution</th>
           <th>Statut</th>
-          <th class="text-end">Actions</th>
+          <th>Résultat</th>
+          <th>Action</th>
         </tr>
       </thead>
+
       <tbody>
-        <tr>
-          <td><span class="fw-bold">Performance Check</span></td>
-          <td><span class="text-muted small">https://exemple.com</span></td>
-          <td>2026-03-28</td>
-          <td>v1.0.0</td>
-          <td><span
-              class="badge badge-type bg-info bg-opacity-10 text-info border border-info border-opacity-25">Performance</span>
+        {% if tested_urls %}
+        {% for item in tested_urls %}
+
+        {% if item.global_status == "PASS" %}
+        {% set row_status = "pass" %}
+        {% elif item.global_status == "FAIL" %}
+        {% set row_status = "fail" %}
+        {% elif item.global_status == "PENDING" %}
+        {% set row_status = "pending" %}
+        {% else %}
+        {% set row_status = "not_executed" %}
+        {% endif %}
+
+        <tr data-url="{{ item.url|lower }}" data-status="{{ row_status }}">
+          <td>{{ item.url }}</td>
+
+          <td>
+            <span class="badge-version">
+              {{ item.analysis_version }}
+            </span>
           </td>
-          <td><span
-              class="badge badge-status bg-success bg-opacity-10 text-success border border-success border-opacity-25">PASS</span>
+
+          <td>
+            <span class="badge-version">
+              {{ item.execution_version }}
+            </span>
           </td>
-          <td class="text-end">
-            <a href="{{ url_for('main.test_results', analysis_id=1) }}" class="btn btn-sm btn-view-test"><i
-                class="fa-solid fa-eye me-1"></i> Voir</a>
+
+          <td>
+            {% if item.execution_state == "Exécuté" %}
+            <span class="status-pass">Exécuté</span>
+            {% else %}
+            <span class="status-pending">Non exécuté</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if item.global_status == "PASS" %}
+            <span class="status-pass">PASS</span>
+            {% elif item.global_status == "FAIL" %}
+            <span class="status-fail">FAIL</span>
+            {% elif item.global_status == "PENDING" %}
+            <span class="status-pending">PENDING</span>
+            {% else %}
+            <span class="status-pending">Non exécuté</span>
+            {% endif %}
+          </td>
+
+          <td>
+            <a href="{{ url_for('main.url_execution_history', analysis_id=item.analysis_id) }}" class="btn-view">
+              <i class="fas fa-eye"></i>
+              Voir
+            </a>
           </td>
         </tr>
+        {% endfor %}
+        {% else %}
         <tr>
-          <td><span class="fw-bold">Security Audit</span></td>
-          <td><span class="text-muted small">https://exemple.com</span></td>
-          <td>2026-03-27</td>
-          <td>v1.0.1</td>
-          <td><span
-              class="badge badge-type bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Sécurité</span>
-          </td>
-          <td><span
-              class="badge badge-status bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">FAIL</span>
-          </td>
-          <td class="text-end">
-            <a href="{{ url_for('main.test_results', analysis_id=2) }}" class="btn btn-sm btn-view-test"><i
-                class="fa-solid fa-eye me-1"></i> Voir</a>
+          <td colspan="6" class="text-center">
+            Aucun test exécuté pour le moment.
           </td>
         </tr>
-        <tr>
-          <td><span class="fw-bold">Qualité du code</span></td>
-          <td><span class="text-muted small">https://exemple.com</span></td>
-          <td>2026-03-26</td>
-          <td>v1.0.2</td>
-          <td><span
-              class="badge badge-type bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">Qualité
-              du code</span></td>
-          <td><span
-              class="badge badge-status bg-success bg-opacity-10 text-success border border-success border-opacity-25">PASS</span>
-          </td>
-          <td class="text-end">
-            <a href="{{ url_for('main.test_results', analysis_id=3) }}" class="btn btn-sm btn-view-test"><i
-                class="fa-solid fa-eye me-1"></i> Voir</a>
-          </td>
-        </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
 </div>
+
+<script>
+  const searchInput = document.getElementById("testSearch");
+  const statusFilter = document.getElementById("statusFilter");
+  const rows = document.querySelectorAll(".tests-table tbody tr[data-url]");
+
+  function applyFilters() {
+    const searchValue = searchInput.value.toLowerCase();
+    const selectedStatus = statusFilter.value;
+
+    rows.forEach(row => {
+      const url = row.dataset.url || "";
+      const status = row.dataset.status || "";
+
+      const matchesSearch = url.includes(searchValue);
+      const matchesStatus = selectedStatus === "all" || status === selectedStatus;
+
+      row.style.display = matchesSearch && matchesStatus ? "" : "none";
+    });
+  }
+
+  searchInput.addEventListener("input", applyFilters);
+  statusFilter.addEventListener("change", applyFilters);
+</script>
 {% endblock %}

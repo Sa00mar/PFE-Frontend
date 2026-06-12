@@ -19,6 +19,8 @@
     word-break: break-word;
 }
 
+/* ===== TABLE COLUMNS WIDTH ===== */
+
 .table-transparent thead th:nth-child(1),
 .table-transparent tbody td:nth-child(1) {
     width: 55px;
@@ -26,63 +28,62 @@
 
 .table-transparent thead th:nth-child(2),
 .table-transparent tbody td:nth-child(2) {
-    width: 26%;
+    width: 25%;
 }
 
 .table-transparent thead th:nth-child(3),
 .table-transparent tbody td:nth-child(3) {
     width: 10%;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .table-transparent thead th:nth-child(4),
 .table-transparent tbody td:nth-child(4) {
-    width: 10%;
+    width: 9%;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .table-transparent thead th:nth-child(5),
 .table-transparent tbody td:nth-child(5) {
-    width: 26%;
+    width: 24%;
 }
 
 .table-transparent thead th:nth-child(6),
 .table-transparent tbody td:nth-child(6) {
-    width: 8%;
+    width: 7%;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .table-transparent thead th:nth-child(7),
 .table-transparent tbody td:nth-child(7) {
-    width: 10%;
+    width: 9%;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .table-transparent thead th:nth-child(8),
 .table-transparent tbody td:nth-child(8) {
-    width: 10%;
+    width: 11%;
+    text-align: center;
+    vertical-align: middle;
 }
+
+/* ===== EXPECTED RESULT COLUMN ===== */
 
 .table-transparent td:nth-child(5) {
     color: #475569;
     line-height: 1.5;
-}
-
-.table-transparent td:nth-child(5) {
     display: table-cell;
-}
-
-.table-transparent td:nth-child(5) {
     max-width: 100%;
-}
-
-.table-transparent td:nth-child(5) {
     overflow: hidden;
-}
-
-.table-transparent td:nth-child(5) {
     text-overflow: ellipsis;
-}
-
-.table-transparent td:nth-child(5) {
     white-space: normal;
 }
+
+/* ===== TEXT WRAP ===== */
 
 .table-transparent td .fw-bold,
 .table-transparent td .text-muted {
@@ -93,6 +94,241 @@
 .element-badge {
     flex-shrink: 0;
 }
+
+/* =========================================================
+   BADGES ALIGNMENT
+   ========================================================= */
+
+.table-transparent tbody td:nth-child(3) .test-badges-wrap {
+    justify-content: center;
+}
+
+.table-transparent tbody td:nth-child(4) .test-priority-badge,
+.table-transparent tbody td:nth-child(6) .badge,
+.table-transparent tbody td:nth-child(7) .badge,
+.table-transparent tbody td:nth-child(8) .details-btn {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* =========================================================
+   TEST TYPE + PRIORITY BADGES
+   ========================================================= */
+
+.test-badges-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.test-type-badge,
+.test-priority-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    letter-spacing: 0.2px;
+}
+
+.test-type-badge {
+    text-transform: capitalize;
+}
+
+/* ===== TYPE COLORS ===== */
+
+.type-ui {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #bae6fd;
+}
+
+.type-functional,
+.type-positive {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+.type-negative {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.type-validation {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.type-navigation {
+    background: #ede9fe;
+    color: #6d28d9;
+    border-color: #ddd6fe;
+}
+
+.type-detail_navigation {
+    background: #ecfeff;
+    color: #0f766e;
+    border-color: #a5f3fc;
+}
+
+.type-security {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+}
+
+.type-seo {
+    background: #fef9c3;
+    color: #854d0e;
+    border-color: #fde68a;
+    text-transform: uppercase;
+}
+
+.type-multi_step_workflow {
+    background: #f3e8ff;
+    color: #7e22ce;
+    border-color: #e9d5ff;
+}
+
+/* Fallback type inconnu */
+.test-type-badge:not([class*="type-ui"]):not([class*="type-functional"]):not([class*="type-positive"]):not([class*="type-negative"]):not([class*="type-validation"]):not([class*="type-navigation"]):not([class*="type-detail_navigation"]):not([class*="type-security"]):not([class*="type-seo"]):not([class*="type-multi_step_workflow"]) {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #e2e8f0;
+}
+
+/* ===== PRIORITY COLORS ===== */
+
+.test-priority-badge {
+    min-width: 74px;
+    text-transform: uppercase;
+}
+
+.priority-high {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.priority-medium {
+    background: #fef3c7;
+    color: #b45309;
+    border-color: #fde68a;
+}
+
+.priority-low {
+    background: #e5e7eb;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+/* =========================================================
+   STATUS BADGE
+   ========================================================= */
+
+.table-transparent tbody td:nth-child(7) .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+}
+
+/* =========================================================
+   DETAILS BUTTON STYLE
+   ========================================================= */
+
+.details-cell {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.details-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.details-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* =========================================================
+   DETAILS COLLAPSE BOX
+   ========================================================= */
+
+.table-transparent tr.collapse td[colspan="7"]>div {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 22px !important;
+}
+
+.table-transparent tr.collapse ol {
+    padding-left: 22px;
+    margin-bottom: 18px;
+}
+
+.table-transparent tr.collapse li {
+    margin-bottom: 6px;
+    color: #334155;
+}
+
+/* =========================================================
+   TOP ACTION BUTTONS HOVER
+   ========================================================= */
+
+#btn-run-selected,
+#btn-run-all {
+    transition: all 0.25s ease;
+}
+
+#btn-run-selected:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+#btn-run-all:hover {
+    background: #1e40af;
+    border-color: #1e40af;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
 @media (max-width: 1200px) {
 
@@ -158,6 +394,7 @@
     .table-transparent tbody td {
         padding: 8px 0;
         border-radius: 0 !important;
+        text-align: left !important;
     }
 
     .table-transparent tbody td:nth-child(1) {
@@ -211,10 +448,11 @@
     }
 
     .table-transparent tbody td:nth-child(8) {
-        padding-top: 14px;
+        padding-top: 20px;
+        padding-bottom: 20px;
     }
 
-    .table-transparent tbody td:nth-child(8) .btn {
+    .table-transparent tbody td:nth-child(8) .details-btn {
         width: 100%;
     }
 

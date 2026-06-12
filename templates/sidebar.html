@@ -44,7 +44,7 @@
                 <i class="fas fa-user-circle"></i>
             </div>
             <div class="user-name">
-                <p id="sidebarUserName">AdministrateurIA</p>
+                <p id="sidebarUserName">{{ session.get("username", "Utilisateur") }}</p>
                 <div class="status-indicator">
                     <span class="status-dot"></span>
                     <span>En ligne</span>

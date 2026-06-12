@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Détail du résultat{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/test_results.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="results-container pt-4">
+
+    <a href="{{ url_for('main.test_results', analysis_id=data.id) }}" class="btn-back-link-modern mb-3 d-inline-block">
+        <i class="fas fa-arrow-left me-2"></i> Retour aux résultats globaux
+    </a>
+
+    <h1 class="title-modern mb-2">Détail du test</h1>
+
+    <p class="text-muted mb-4">
+        Analyse approfondie du résultat d'exécution Selenium.
+    </p>
+
+    <div class="test-detail-layout">
+
+        <!-- ================================================ -->
+        <!-- LEFT : CAPTURE SELENIUM + BARRE DE STATUT        -->
+        <!-- ================================================ -->
+        <div class="test-detail-screenshot-card">
+
+            <div class="test-detail-image-wrapper">
+                {% if data.test.screenshot_path %}
+                <img
+                    src="{{ url_for('static', filename=data.test.screenshot_path) }}"
+                    alt="Capture Selenium du test"
+                    class="test-detail-screenshot"
+                >
+                {% else %}
+                <div class="test-detail-placeholder">
+                    <i class="fas fa-image me-2"></i> Aucune capture disponible
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Barre compacte sous la capture -->
+            <div class="test-detail-image-footer-bar">
+
+                <!-- Statut -->
+                <div class="footer-bar-left">
+                    {% if data.test.status == 'passed' %}
+                    <span class="status-badge passed">
+                        <i class="fas fa-check-circle me-1"></i> PASS
+                    </span>
+                    {% elif data.test.status == 'failed' %}
+                    <span class="status-badge failed">
+                        <i class="fas fa-times-circle me-1"></i> FAIL
+                    </span>
+                    {% else %}
+                    <span class="status-badge pending">
+                        <i class="fas fa-clock me-1"></i> PENDING
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Priorité · Version · Date -->
+                <div class="footer-bar-right">
+
+                    {% if data.test.priority %}
+                    <div class="footer-meta-item">
+                        <span class="meta-label">Priorité</span>
+                        <span class="meta-badge priority-{{ data.test.priority }}">{{ data.test.priority }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if data.test.version %}
+                    <div class="footer-meta-item">
+                        <span class="meta-label">Version</span>
+                        <span class="meta-badge version-badge">{{ data.test.version }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if data.test.executed_at %}
+                    <div class="footer-meta-item">
+                        <span class="meta-label">Exécuté le</span>
+                        <span class="meta-val">{{ data.test.executed_at|string|truncate(16, True, '') }}</span>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================================================ -->
+        <!-- RIGHT : PANNEAU PROPRIÉTÉS                       -->
+        <!-- ================================================ -->
+        <div class="test-detail-info-card">
+
+            <!-- En-tête : kicker + titre + bouton ré-exécuter -->
+            <div class="detail-panel-header">
+                <span class="detail-panel-kicker">PROPRIÉTÉS</span>
+                <div class="detail-panel-title-row">
+                    <div class="detail-panel-title-zone">
+                        <h2 class="detail-test-title">{{ data.test.name }}</h2>
+                        <p class="detail-test-type">{{ data.test.type }}</p>
+                    </div>
+                    <!-- Bouton Ré-exécuter compact, placé à droite du titre -->
+                    <a href="#" class="btn-re-run-test-inline" title="Ré-exécuter ce test">
+                        <i class="fas fa-sync-alt me-1"></i> Ré-exécuter
+                    </a>
+                </div>
+            </div>
+
+            <!-- Propriétés principales -->
+            <div class="properties-list">
+
+
+
+                {% if data.test.action %}
+                <div class="property-item">
+                    <span class="property-label">Action IA</span>
+                    <span class="property-value">{{ data.test.action }}</span>
+                </div>
+                {% endif %}
+
+                <div class="property-item">
+                    <span class="property-label">URL analysée</span>
+                    <a href="{{ data.url }}" target="_blank" class="property-value url-link">
+                        {{ data.url }} <i class="fas fa-external-link-alt ms-1"></i>
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- ============================================ -->
+            <!-- Sections déroulantes — toutes fermées        -->
+            <!-- ============================================ -->
+
+            {% if data.test.expected_result %}
+            <details class="detail-collapse">
+                <summary>Résultat attendu</summary>
+                <div class="detail-collapse-content">
+                    <div class="detail-content-box">{{ data.test.expected_result }}</div>
+                </div>
+            </details>
+            {% endif %}
+
+            <details class="detail-collapse">
+                <summary>Message exact d'exécution</summary>
+                <div class="detail-collapse-content">
+                    <div class="detail-content-box">{{ data.test.detail or "Aucun détail disponible." }}</div>
+                </div>
+            </details>
+
+            {% if data.test.steps %}
+            <details class="detail-collapse">
+                <summary>Étapes du test</summary>
+                <div class="detail-collapse-content">
+                    <div class="detail-steps-box">
+                        <ol class="detail-steps">
+                            {% for step in data.test.steps %}
+                            <li>{{ step }}</li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                </div>
+            </details>
+            {% endif %}
+
+            {% if data.test.selenium_script %}
+            <details class="detail-collapse">
+                <summary>Script Selenium</summary>
+                <div class="detail-collapse-content">
+                    <pre class="detail-code-block">{{ data.test.selenium_script }}</pre>
+                </div>
+            </details>
+            {% endif %}
+
+            {% if data.test.cypress_script %}
+            <details class="detail-collapse">
+                <summary>Script Cypress</summary>
+                <div class="detail-collapse-content">
+                    <pre class="detail-code-block">{{ data.test.cypress_script }}</pre>
+                </div>
+            </details>
+            {% endif %}
+
+            <details class="detail-collapse">
+                <summary>Détails techniques</summary>
+                <div class="detail-collapse-content">
+                    {% if data.test.element_name or data.test.selector %}
+                        {% if data.test.element_name %}
+                        <div class="technical-field">
+                            <span class="technical-field-label">Élément testé</span>
+                            <div class="detail-content-box">{{ data.test.element_name }}</div>
+                        </div>
+                        {% endif %}
+                        {% if data.test.selector %}
+                        <div class="technical-field">
+                            <span class="technical-field-label">Sélecteur détecté</span>
+                            <pre class="technical-selector-output">{{ data.test.selector }}</pre>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <p class="detail-element-empty">Aucune information technique détaillée n'est encore disponible.</p>
+                    {% endif %}
+                </div>
+            </details>
+
+        </div>
+        <!-- / RIGHT -->
+
+    </div>
+    <!-- / test-detail-layout -->
+
+</div>
+{% endblock %}

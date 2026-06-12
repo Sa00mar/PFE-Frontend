@@ -1,17 +1,16 @@
+import re
+
+
 def is_not_noise(item):
     name = (item.get("name") or "").lower()
-    item_id = (item.get("id") or "").lower()
-    item_class = (item.get("class") or "").lower()
-    value = (item.get("value") or "").lower()
     text = (item.get("text") or "").lower()
 
-    # On garde search et newsletter parce qu'ils sont utiles pour les tests home_page.
     return not (
-        "csrf" in name or
-        "token" in name or
-        "hidden" in name or
-        "script" in text or
-        "style" in text
+        "csrf" in name
+        or "token" in name
+        or "hidden" in name
+        or "script" in text
+        or "style" in text
     )
 
 
@@ -24,12 +23,9 @@ def is_real_input(item):
     input_type = (item.get("type") or "").lower()
     return input_type not in ["submit", "button", "hidden"]
 
+
 def is_cta_button(item):
-    text = (
-        item.get("text")
-        or item.get("value")
-        or ""
-    ).lower()
+    text = (item.get("text") or item.get("value") or "").lower()
 
     cta_keywords = [
         "read more",
@@ -42,7 +38,7 @@ def is_cta_button(item):
         "add to cart",
         "checkout",
         "get xpath",
-        "submit"
+        "submit",
     ]
 
     return any(keyword in text for keyword in cta_keywords)
@@ -51,22 +47,16 @@ def is_cta_button(item):
 def is_pagination_link(item):
     text = (item.get("text") or "").lower()
 
-    return (
-        text.isdigit()
-        or text in ["next", "previous", "prev"]
-    )
+    return text.isdigit() or text in ["next", "previous", "prev"]
 
 
 def is_navigation_link(item):
     href = (item.get("href") or "").lower()
 
-    return any(word in href for word in [
-        "login",
-        "practice",
-        "course",
-        "blog",
-        "contact"
-    ])
+    return any(
+        word in href for word in ["login", "practice", "course", "blog", "contact"]
+    )
+
 
 def remove_duplicate_buttons(buttons):
     """
@@ -104,12 +94,12 @@ def filter_relevant_elements(parsed_data, page_type):
         "links": [],
         "forms": [],
         "textareas": [],
-        "selects": []
+        "selects": [],
+        "visible_text": parsed_data.get("visible_text", ""),
     }
 
     # ================= LOGIN PAGE =================
     if page_type == "login_page":
-
         # TEXT INPUTS
         for item in parsed_data.get("text_inputs", []):
             name = (item.get("name") or "").lower()
@@ -120,9 +110,15 @@ def filter_relevant_elements(parsed_data, page_type):
                 continue
 
             if (
-                "email" in name or "user" in name or "login" in name or
-                "email" in item_id or "user" in item_id or "login" in item_id or
-                "email" in item_class or "user" in item_class or "login" in item_class
+                "email" in name
+                or "user" in name
+                or "login" in name
+                or "email" in item_id
+                or "user" in item_id
+                or "login" in item_id
+                or "email" in item_class
+                or "user" in item_class
+                or "login" in item_class
             ):
                 relevant["inputs"].append(item)
 
@@ -141,9 +137,6 @@ def filter_relevant_elements(parsed_data, page_type):
 
         # BUTTONS (input type submit/button)
         for item in parsed_data.get("other_inputs", []):
-            value = (item.get("value") or "").lower()
-            item_class = (item.get("class") or "").lower()
-
             if not is_not_noise(item):
                 continue
 
@@ -151,6 +144,7 @@ def filter_relevant_elements(parsed_data, page_type):
                 continue
 
             relevant["buttons"].append(item)
+
         # BUTTONS (<button>)
         for item in parsed_data.get("buttons", []):
             text = (item.get("text") or "").lower()
@@ -172,23 +166,21 @@ def filter_relevant_elements(parsed_data, page_type):
         for link in parsed_data.get("links", []):
             if not is_not_noise(link):
                 continue
-            href = (link.get("href")or"").lower()
+            href = (link.get("href") or "").lower()
 
             if "logout" in href:
                 continue
             relevant["links"].append(link)
 
-    
     # ================= HOME PAGE =================
 
     elif page_type == "home_page":
-
         # Inputs utiles : search, newsletter, radio poll
         for item in (
-            parsed_data.get("text_inputs", []) +
-            parsed_data.get("email_inputs", []) +
-            parsed_data.get("radio_inputs", []) +
-            parsed_data.get("checkbox_inputs", [])
+            parsed_data.get("text_inputs", [])
+            + parsed_data.get("email_inputs", [])
+            + parsed_data.get("radio_inputs", [])
+            + parsed_data.get("checkbox_inputs", [])
         ):
             if is_real_input(item) and is_not_noise(item):
                 relevant["inputs"].append(item)
@@ -197,7 +189,7 @@ def filter_relevant_elements(parsed_data, page_type):
         for item in parsed_data.get("buttons", []):
             if is_not_noise(item):
                 if is_cta_button(item):
-                   item["semantic_type"] = "cta_button"
+                    item["semantic_type"] = "cta_button"
 
                 relevant["buttons"].append(item)
 
@@ -208,34 +200,32 @@ def filter_relevant_elements(parsed_data, page_type):
         # Liens utiles : menu, login, register, cart, wishlist, catégories
         # Garder les vrais liens internes utiles
         for link in parsed_data.get("links", []):
+            if not is_not_noise(link):
+                continue
 
-           if not is_not_noise(link):
-              continue
+            href = (link.get("href") or "").lower()
 
-           href = (link.get("href") or "").lower()
+            # ignorer logout
+            if "logout" in href:
+                continue
 
-       # ignorer logout
-           if "logout" in href:
-            continue
-
-           if is_navigation_link(link) or is_pagination_link(link):
-              link["semantic_type"] = "navigation"
-              relevant["links"].append(link)
-           else:
-              relevant["links"].append(link)
+            if is_navigation_link(link) or is_pagination_link(link):
+                link["semantic_type"] = "navigation"
+                relevant["links"].append(link)
+            else:
+                relevant["links"].append(link)
 
         relevant["forms"] = parsed_data.get("forms", [])
         relevant["textareas"] = parsed_data.get("textareas", [])
         relevant["selects"] = parsed_data.get("selects", [])
 
-
-# ================= FORM PAGE =================
+    # ================= FORM PAGE =================
 
     elif page_type == "form_page":
-
         # INPUTS (sans boutons)
         relevant["inputs"] = [
-            item for item in parsed_data.get("inputs", [])
+            item
+            for item in parsed_data.get("inputs", [])
             if is_real_input(item) and is_not_noise(item)
         ]
 
@@ -256,7 +246,7 @@ def filter_relevant_elements(parsed_data, page_type):
         relevant["selects"] = parsed_data.get("selects", [])
         for link in parsed_data.get("links", []):
             if not is_not_noise(link):
-               continue
+                continue
 
             href = (link.get("href") or "").lower()
 
@@ -264,17 +254,17 @@ def filter_relevant_elements(parsed_data, page_type):
                 continue
 
             if is_navigation_link(link) or is_pagination_link(link):
-               link["semantic_type"] = "navigation"
+                link["semantic_type"] = "navigation"
 
             relevant["links"].append(link)
 
     # ================= CHOICE FORM =================
     elif page_type == "choice_form_page":
-
         relevant["inputs"] = [
-            item for item in (
-                parsed_data.get("radio_inputs", []) +
-                parsed_data.get("checkbox_inputs", [])
+            item
+            for item in (
+                parsed_data.get("radio_inputs", [])
+                + parsed_data.get("checkbox_inputs", [])
             )
             if is_not_noise(item)
         ]
@@ -286,7 +276,7 @@ def filter_relevant_elements(parsed_data, page_type):
         for item in parsed_data.get("other_inputs", []):
             if is_button_input(item) and is_not_noise(item):
                 relevant["buttons"].append(item)
-        
+
         for link in parsed_data.get("links", []):
             if not is_not_noise(link):
                 continue
@@ -303,14 +293,14 @@ def filter_relevant_elements(parsed_data, page_type):
                 or "detail" in text
             ):
                 link["semantic_type"] = "detail_or_navigation"
-            relevant["links"].append(link)    
+            relevant["links"].append(link)
         relevant["forms"] = parsed_data.get("forms", [])
 
     # ================= DEFAULT =================
     else:
-
         relevant["inputs"] = [
-            item for item in parsed_data.get("inputs", [])
+            item
+            for item in parsed_data.get("inputs", [])
             if is_real_input(item) and is_not_noise(item)
         ]
 
@@ -320,14 +310,13 @@ def filter_relevant_elements(parsed_data, page_type):
                     item["semantic_type"] = "cta_button"
                 relevant["buttons"].append(item)
 
-
         for item in parsed_data.get("other_inputs", []):
             if is_button_input(item) and is_not_noise(item):
                 relevant["buttons"].append(item)
 
         for link in parsed_data.get("links", []):
             if not is_not_noise(link):
-               continue
+                continue
 
             href = (link.get("href") or "").lower()
 
@@ -335,10 +324,10 @@ def filter_relevant_elements(parsed_data, page_type):
                 continue
 
             if is_navigation_link(link) or is_pagination_link(link):
-               link["semantic_type"] = "navigation"
+                link["semantic_type"] = "navigation"
 
             relevant["links"].append(link)
-            
+
         relevant["forms"] = parsed_data.get("forms", [])
         relevant["textareas"] = parsed_data.get("textareas", [])
         relevant["selects"] = parsed_data.get("selects", [])
@@ -347,6 +336,7 @@ def filter_relevant_elements(parsed_data, page_type):
     relevant["buttons"] = remove_duplicate_buttons(relevant["buttons"])
 
     return relevant
+
 
 def detect_semantic_actions(relevant_data):
     """
@@ -365,19 +355,23 @@ def detect_semantic_actions(relevant_data):
 
     # 1. Formulaire détecté
     if forms or inputs or textareas:
-        actions.append({
-            "type": "form_interaction",
-            "reason": "La page contient des champs ou un formulaire.",
-            "elements_count": len(inputs) + len(textareas)
-        })
+        actions.append(
+            {
+                "type": "form_interaction",
+                "reason": "La page contient des champs ou un formulaire.",
+                "elements_count": len(inputs) + len(textareas),
+            }
+        )
 
     # 2. Soumission possible
     if (forms or inputs or textareas) and buttons:
-        actions.append({
-            "type": "submit_action",
-            "reason": "La page contient des champs et au moins un bouton d'action.",
-            "elements_count": len(buttons)
-        })
+        actions.append(
+            {
+                "type": "submit_action",
+                "reason": "La page contient des champs et au moins un bouton d'action.",
+                "elements_count": len(buttons),
+            }
+        )
 
     # 3. Filtres détectés
     if selects:
@@ -394,26 +388,23 @@ def detect_semantic_actions(relevant_data):
                 text = option.get("text")
                 if text:
                     options.append(text)
-            select_filters.append({
-                "label": label,
-                "options": options[:20]
-            })
+            select_filters.append({"label": label, "options": options[:20]})
 
-        actions.append({
-            "type": "select_filter_action",
-            "reason": "La page contient une ou plusieurs listes déroulantes.",
-            "elements_count": len(selects),
-            "filters": select_filters
-        })
+        actions.append(
+            {
+                "type": "select_filter_action",
+                "reason": "La page contient une ou plusieurs listes déroulantes.",
+                "elements_count": len(selects),
+                "filters": select_filters,
+            }
+        )
 
     checkbox_count = sum(
-        1 for item in inputs
-        if (item.get("type") or "").lower() == "checkbox"
+        1 for item in inputs if (item.get("type") or "").lower() == "checkbox"
     )
 
     radio_count = sum(
-        1 for item in inputs
-        if (item.get("type") or "").lower() == "radio"
+        1 for item in inputs if (item.get("type") or "").lower() == "radio"
     )
 
     radio_options = []
@@ -433,57 +424,62 @@ def detect_semantic_actions(relevant_data):
         elif input_type == "checkbox":
             checkbox_options.append(label)
     if checkbox_count > 0 or radio_count > 0:
-        actions.append({
-            "type": "choice_filter_action",
-            "reason": "La page contient des radio buttons ou des checkboxes.",
-            "radio_count": radio_count,
-            "checkbox_count": checkbox_count,
-            "radio_options": radio_options[:20],
-            "checkbox_options": checkbox_options[:20]
-        })
+        actions.append(
+            {
+                "type": "choice_filter_action",
+                "reason": "La page contient des radio buttons ou des checkboxes.",
+                "radio_count": radio_count,
+                "checkbox_count": checkbox_count,
+                "radio_options": radio_options[:20],
+                "checkbox_options": checkbox_options[:20],
+            }
+        )
 
     # 4. Navigation interne détectée
-    internal_links = [
-        link for link in links
-        if link.get("href")
-    ]
+    internal_links = [link for link in links if link.get("href")]
     link_labels = []
     for link in internal_links:
         text = (link.get("text") or "").strip()
         if text:
             link_labels.append(text)
 
-
     if internal_links:
-        actions.append({
-            "type": "navigation_action",
-            "reason": "La page contient des liens navigables.",
-            "elements_count": len(internal_links),
-            "sample_labels": link_labels[:15]
-        })
-    
+        actions.append(
+            {
+                "type": "navigation_action",
+                "reason": "La page contient des liens navigables.",
+                "elements_count": len(internal_links),
+                "sample_labels": link_labels[:15],
+            }
+        )
+
     detail_labels = []
     for link in internal_links:
         text = (link.get("text") or "").strip()
         normalized_text = text.lower()
-        if any(keyword in normalized_text for keyword in [
-            "view",
-            "details",
-            "detail",
-            "read more",
-            "learn more",
-            "enroll",
-            "open",
-            "see more"
-        ]):
-           detail_labels.append(text)
+        if any(
+            keyword in normalized_text
+            for keyword in [
+                "view",
+                "details",
+                "detail",
+                "read more",
+                "learn more",
+                "enroll",
+                "open",
+                "see more",
+            ]
+        ):
+            detail_labels.append(text)
     if detail_labels:
-        actions.append({
-            "type": "detail_navigation",
-            "reason": "La page contient des liens qui mènent probablement vers des détails, articles, cours ou contenus approfondis.",
-            "elements_count": len(detail_labels),
-            "sample_labels": detail_labels[:15]
-        })
+        actions.append(
+            {
+                "type": "detail_navigation",
+                "reason": "La page contient des liens qui mènent probablement vers des détails, articles, cours ou contenus approfondis.",
+                "elements_count": len(detail_labels),
+                "sample_labels": detail_labels[:15],
+            }
+        )
 
     # 5. Navigation répétée type tableau/liste
     link_texts = {}
@@ -496,66 +492,126 @@ def detect_semantic_actions(relevant_data):
 
         link_texts[text] = link_texts.get(text, 0) + 1
 
-    repeated_links = [
-        text for text, count in link_texts.items()
-        if count >= 2
-    ]
+    repeated_links = [text for text, count in link_texts.items() if count >= 2]
 
     if repeated_links:
-        actions.append({
-            "type": "repeated_detail_navigation",
-            "reason": "La page contient plusieurs liens similaires, probablement une liste ou un tableau.",
-            "repeated_labels": repeated_links[:5]
-        })
+        actions.append(
+            {
+                "type": "repeated_detail_navigation",
+                "reason": "La page contient plusieurs liens similaires, probablement une liste ou un tableau.",
+                "repeated_labels": repeated_links[:5],
+            }
+        )
 
     # 6. Actions utilisateur par boutons
     button_labels = []
     for btn in buttons:
-        label = (
-            btn.get("text")
-            or btn.get("value")
-            or ""
-        ).strip()
+        label = (btn.get("text") or btn.get("value") or "").strip()
         if label:
             button_labels.append(label)
     if buttons:
-        actions.append({
-            "type": "button_action",
-            "reason": "La page contient des boutons cliquables.",
-            "elements_count": len(buttons),
-            "sample_labels": button_labels[:10]
-        })
-     
+        actions.append(
+            {
+                "type": "button_action",
+                "reason": "La page contient des boutons cliquables.",
+                "elements_count": len(buttons),
+                "sample_labels": button_labels[:10],
+            }
+        )
+
         normalized_button_labels = [
-            (
-                btn.get("text")
-                or btn.get("value")
-                or ""
-            ).strip().lower()
+            (btn.get("text") or btn.get("value") or "").strip().lower()
             for btn in buttons
         ]
-        
-        workflow_keywords = [
-            "add",
-            "edit",
-            "create",
-            "new",
-            "update"
-        ]
-        if any(label in workflow_keywords for label in normalized_button_labels):
 
-            actions.append({
-                "type": "multi_step_workflow",
-                "reason": "La page contient une action pouvant déclencher un workflow dynamique.",
-                "trigger_buttons": button_labels[:10]
-            })
+        workflow_keywords = ["add", "edit", "create", "new", "update"]
+        if any(label in workflow_keywords for label in normalized_button_labels):
+            actions.append(
+                {
+                    "type": "multi_step_workflow",
+                    "reason": "La page contient une action pouvant déclencher un workflow dynamique.",
+                    "trigger_buttons": button_labels[:10],
+                }
+            )
 
     # 7. Plusieurs boutons = workflow possible
     if len(buttons) >= 2:
-        actions.append({
-            "type": "multi_step_interaction",
-            "reason": "La page contient plusieurs boutons, ce qui peut indiquer un workflow utilisateur.",
-            "elements_count": len(buttons)
-        })
+        actions.append(
+            {
+                "type": "multi_step_interaction",
+                "reason": "La page contient plusieurs boutons, ce qui peut indiquer un workflow utilisateur.",
+                "elements_count": len(buttons),
+            }
+        )
 
     return actions
+
+
+def collect_visible_text_from_data(data):
+    """
+    Récupère tous les textes visibles disponibles dans relevant_data/pages.
+    Cette fonction reste générique : elle ne dépend pas d'un site précis.
+    """
+
+    texts = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, str):
+                texts.append(value)
+            elif isinstance(value, (dict, list)):
+                texts.append(collect_visible_text_from_data(value))
+
+    elif isinstance(data, list):
+        for item in data:
+            texts.append(collect_visible_text_from_data(item))
+
+    return " ".join([text for text in texts if text])
+
+
+def extract_test_credentials_from_relevant_data(relevant_data):
+    """
+    Extrait les identifiants de test visibles dans les données analysées.
+    Fonction générique : elle cherche dans tous les textes disponibles.
+    """
+
+    if not relevant_data:
+        return {}
+
+    visible_text = collect_visible_text_from_data(relevant_data)
+
+    if not visible_text:
+        return {}
+
+    visible_text = " ".join(visible_text.split())
+
+    credentials = {}
+
+    username_patterns = [
+        r"username\s*[:=]\s*([^\s,;]+)",
+        r"user\s*[:=]\s*([^\s,;]+)",
+        r"login\s*[:=]\s*([^\s,;]+)",
+        r"type\s+username\s+([^\s,;]+)\s+into",
+        r"saisir\s+['\"]?([^'\"]+)['\"]?\s+dans\s+le\s+champ\s+['\"]?username",
+    ]
+
+    password_patterns = [
+        r"password\s*[:=]\s*([^\s,;]+)",
+        r"mot\s+de\s+passe\s*[:=]\s*([^\s,;]+)",
+        r"type\s+password\s+([^\s,;]+)\s+into",
+        r"saisir\s+['\"]?([^'\"]+)['\"]?\s+dans\s+le\s+champ\s+['\"]?password",
+    ]
+
+    for pattern in username_patterns:
+        match = re.search(pattern, visible_text, re.IGNORECASE)
+        if match:
+            credentials["username"] = match.group(1).strip()
+            break
+
+    for pattern in password_patterns:
+        match = re.search(pattern, visible_text, re.IGNORECASE)
+        if match:
+            credentials["password"] = match.group(1).strip()
+            break
+
+    return credentials

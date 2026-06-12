@@ -49,60 +49,137 @@
 
             <div id="urlValidationMessage" class="mt-2 small"></div>
 
-            <!-- AUTH -->
-            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+            <!-- ANALYSIS CONFIG -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 analysis-config-card">
 
-                <div class="form-check mb-3">
+                <h5 class="fw-bold mb-4">
+                    Configuration de l’analyse
+                </h5>
 
-                    <input class="form-check-input" type="checkbox" id="authRequired" name="auth_required" value="yes">
+                <!-- MODE ANALYSE -->
+                <div class="mb-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="authRequired" name="auth_required"
+                            value="yes">
 
-                    <label class="form-check-label fw-bold fs-5" for="authRequired">
-                        Analyse avec connexion
-                    </label>
+                        <label class="form-check-label fw-semibold" for="authRequired">
+                            Analyse avec connexion
+                        </label>
+                    </div>
 
+                    <small class="text-muted">
+                        Activez cette option si la page nécessite un compte de test.
+                    </small>
                 </div>
 
-                <p class="text-muted mb-4">
-                    Utilisez uniquement un compte de test.
-                    Les identifiants ne seront pas sauvegardés.
-                </p>
+                <!-- Champs connexion -->
+                <div id="authFields" class="d-none mb-4">
+                    <div class="row g-3">
 
-                <!-- Champs cachés -->
-                <div id="authFields" class="d-none">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">
+                                Email de test
+                            </label>
 
-                    <!-- EMAIL -->
-                    <div class="mb-3">
+                            <input type="email" class="form-control" id="loginEmail" name="login_email"
+                                placeholder="test@example.com" autocomplete="username" disabled>
+                        </div>
 
-                        <label class="form-label fw-semibold">
-                            Email de test
-                        </label>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">
+                                Mot de passe de test
+                            </label>
 
-                        <input type="email" class="form-control" id="loginEmail" name="login_email"
-                            placeholder="test@example.com" autocomplete="username" disabled>
-
-                    </div>
-
-                    <!-- PASSWORD -->
-                    <div class="mb-3">
-
-                        <label class="form-label fw-semibold">
-                            Mot de passe de test
-                        </label>
-
-                        <input type="password" class="form-control" id="loginPassword" name="login_password"
-                            placeholder="Mot de passe du compte test" autocomplete="current-password" disabled>
+                            <input type="password" class="form-control" id="loginPassword" name="login_password"
+                                placeholder="Mot de passe" autocomplete="current-password" disabled>
+                        </div>
 
                     </div>
+                </div>
 
+                <!-- SCOPE -->
+                <div class="mb-4">
+                    <label for="analysis_scope" class="form-label fw-semibold">
+                        Scope d’analyse
+                    </label>
+
+                    <select class="form-select" id="analysis_scope" name="analysis_scope" required>
+                        <option value="single_page" selected>Page actuelle uniquement</option>
+                        <option value="full_site">Site complet</option>
+                        <option value="specific_feature">Fonctionnalité précise</option>
+                    </select>
+
+                    <small class="text-muted">
+                        Choisissez la portée de l’analyse à effectuer.
+                    </small>
+                </div>
+
+                <!-- Fonctionnalité précise -->
+                <div class="mb-4" id="targetFeatureBlock">
+                    <label for="target_feature" class="form-label fw-semibold">
+                        Fonctionnalité précise à tester
+                    </label>
+
+                    <input type="text" class="form-control" id="target_feature" name="target_feature"
+                        placeholder="Exemple : login, contact, recherche...">
+                </div>
+
+                <!-- TYPES DE TESTS -->
+                <div>
+                    <label class="form-label fw-semibold">
+                        Types de tests à générer
+                    </label>
+
+                    <div class="row g-3 mt-1">
+
+                        <div class="col-md-6">
+                            <label class="test-option-card">
+                                <input type="checkbox" name="test_types" value="functional" checked>
+                                <span>
+                                    <strong>Fonctionnels</strong>
+                                    <small>Scénarios métier positifs et négatifs</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="test-option-card">
+                                <input type="checkbox" name="test_types" value="ui" checked>
+                                <span>
+                                    <strong>UI</strong>
+                                    <small>Affichage, boutons, champs et messages</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="test-option-card">
+                                <input type="checkbox" name="test_types" value="security">
+                                <span>
+                                    <strong>Sécurité</strong>
+                                    <small>XSS, SQL injection, accès non autorisé</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="test-option-card">
+                                <input type="checkbox" name="test_types" value="seo">
+                                <span>
+                                    <strong>SEO</strong>
+                                    <small>Title, meta description, H1, images</small>
+                                </span>
+                            </label>
+                        </div>
+
+                    </div>
                 </div>
 
             </div>
 
             <!-- SUBMIT -->
             <button type="submit" class="btn btn-custom-primary btn-lg w-100 py-3 rounded-3" id="btn-launch">
-
                 Lancer l'analyse
-
             </button>
 
         </form>
@@ -156,5 +233,21 @@
     });
 
 </script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const scopeSelect = document.getElementById("analysis_scope");
+        const targetFeatureBlock = document.getElementById("targetFeatureBlock");
 
+        function toggleTargetFeature() {
+            if (scopeSelect.value === "specific_feature") {
+                targetFeatureBlock.style.display = "block";
+            } else {
+                targetFeatureBlock.style.display = "none";
+            }
+        }
+
+        scopeSelect.addEventListener("change", toggleTargetFeature);
+        toggleTargetFeature();
+    });
+</script>
 {% endblock %}

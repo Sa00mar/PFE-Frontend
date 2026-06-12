@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Historique des exécutions{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/my-tests.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="results-container pt-4">
+
+    <a href="{{ url_for('main.my_tests') }}" class="btn-back-link-modern mb-4 d-inline-block">
+        <i class="fas fa-arrow-left me-2"></i>
+        Retour à Mes Tests
+    </a>
+
+    <h1 class="fw-800 text-dark mb-2 title-modern">
+        Historique des exécutions
+    </h1>
+
+    <p class="text-muted mb-4">
+        URL testée : <strong>{{ url }}</strong>
+    </p>
+
+    <div class="table-responsive">
+        <table class="tests-table">
+            <thead>
+                <tr>
+                    <th>Analyse</th>
+                    <th>Exécution</th>
+                    <th>Date</th>
+                    <th>Statut du test</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% if history %}
+                {% for item in history %}
+                <tr>
+                    <td>
+                        <span class="badge-version">
+                            {{ item.analysis_version }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="badge-version">
+                            {{ item.execution_version }}
+                        </span>
+                    </td>
+
+                    <td>{{ item.executed_at }}</td>
+
+                    <td>
+                        {% if item.global_status == "PASS" %}
+                        <span class="status-pass">PASS</span>
+                        {% elif item.global_status == "FAIL" %}
+                        <span class="status-fail">FAIL</span>
+                        {% elif item.global_status == "PENDING" %}
+                        <span class="status-pending">PENDING</span>
+                        {% else %}
+                        <span class="status-pending">Non exécuté</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <a href="{{ url_for('main.test_results', analysis_id=item.analysis_id) }}?run={{ item.execution_run }}&from=history"
+                            class="btn-view">
+                            <i class="fas fa-eye"></i>
+                            Voir résultats
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">
+                        Aucune exécution trouvée pour cette URL.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

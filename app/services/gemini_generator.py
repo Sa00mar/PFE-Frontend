@@ -1,10 +1,17 @@
 import os
 import json
+import re
+from urllib.parse import urlparse
+
 # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
+
 # pyrefly: ignore [missing-import]
 from google import genai
-from app.services.test_enricher import enrich_missing_tests
+from app.services.test_enricher import (
+    enrich_missing_tests,
+    enrich_security_and_seo_tests,
+)
 
 load_dotenv()
 
@@ -31,7 +38,7 @@ def clean_json_response(content):
     end = content.rfind("]")
 
     if start != -1 and end != -1 and end > start:
-        content = content[start:end + 1]
+        content = content[start : end + 1]
 
     return content
 
@@ -48,10 +55,115 @@ def normalize_test_case(test):
         "steps": test.get("steps", []),
         "expected_result": test.get("expected_result", ""),
         "selenium_script": test.get("selenium_script", ""),
-        "cypress_script": test.get("cypress_script", "")
+        "cypress_script": test.get("cypress_script", ""),
     }
 
-def post_process_generated_tests(test_cases, main_feature,dom_text):
+
+def is_positive_login_test(test):
+    name = (test.get("name") or "").lower()
+    test_type = (test.get("type") or "").lower()
+    expected = (test.get("expected_result") or "").lower()
+
+    return ("login" in name or "connexion" in name or "auth" in name) and (
+        test_type == "positive"
+        or "success" in name
+        or "successful" in name
+        or "succès" in expected
+        or "connecté avec succès" in expected
+    )
+
+
+def enforce_detected_login_credentials(test, test_credentials):
+    """
+    Corrige uniquement les scripts Selenium/Cypress des tests positifs de login.
+    Ne met aucune valeur en dur.
+    Utilise seulement les credentials détectés automatiquement.
+    """
+
+    if not test or not test_credentials:
+        return test
+
+    username = test_credentials.get("username")
+    password = test_credentials.get("password")
+
+    if not username or not password:
+        return test
+
+    test_text = " ".join(
+        [
+            str(test.get("name", "")),
+            str(test.get("type", "")),
+            str(test.get("expected_result", "")),
+            " ".join([str(step) for step in test.get("steps", [])]),
+        ]
+    ).lower()
+
+    is_login_test = (
+        "login" in test_text
+        or "connexion" in test_text
+        or "authentification" in test_text
+    )
+
+    is_positive_test = (
+        "positive" in test_text
+        or "succès" in test_text
+        or "success" in test_text
+        or "valides" in test_text
+    )
+
+    is_negative_test = (
+        "invalid" in test_text
+        or "incorrect" in test_text
+        or "vide" in test_text
+        or "empty" in test_text
+        or "erreur" in test_text
+        or "negative" in test_text
+    )
+
+    if not is_login_test or not is_positive_test or is_negative_test:
+        return test
+
+    selenium_script = test.get("selenium_script") or ""
+    cypress_script = test.get("cypress_script") or ""
+
+    if selenium_script:
+        selenium_script = re.sub(
+            r'(username_field\.send_keys\()\s*["\'][^"\']*["\']\s*(\))',
+            rf'\1"{username}"\2',
+            selenium_script,
+            flags=re.IGNORECASE,
+        )
+
+        selenium_script = re.sub(
+            r'(password_field\.send_keys\()\s*["\'][^"\']*["\']\s*(\))',
+            rf'\1"{password}"\2',
+            selenium_script,
+            flags=re.IGNORECASE,
+        )
+
+        test["selenium_script"] = selenium_script
+
+    if cypress_script:
+        cypress_script = re.sub(
+            r'(cy\.get\([\'"]#?username[\'"]\)\.type\()\s*["\'][^"\']*["\']\s*(\))',
+            rf'\1"{username}"\2',
+            cypress_script,
+            flags=re.IGNORECASE,
+        )
+
+        cypress_script = re.sub(
+            r'(cy\.get\([\'"]#?password[\'"]\)\.type\()\s*["\'][^"\']*["\']\s*(\))',
+            rf'\1"{password}"\2',
+            cypress_script,
+            flags=re.IGNORECASE,
+        )
+
+        test["cypress_script"] = cypress_script
+
+    return test
+
+
+def post_process_generated_tests(test_cases, main_feature, dom_text):
     """
     Nettoie et stabilise les cas de test générés par Gemini.
     """
@@ -72,50 +184,257 @@ def post_process_generated_tests(test_cases, main_feature,dom_text):
         seen_keys.add(semantic_key)
 
         if main_feature == "authentication" and name.startswith("tc_auth"):
-          test["priority"] = "high"
+            test["priority"] = "high"
 
         if "footer" in name or "privacy" in name or "copyright" in name:
-          test["priority"] = "low"
+            test["priority"] = "low"
         elif "nav" in name:
-          test["priority"] = "medium"
+            test["priority"] = "medium"
 
         if "toggle" in name or "menu" in name:
-          test["type"] = "functional"
-          test["priority"] = "low"
+            test["type"] = "functional"
+            test["priority"] = "low"
 
         unique_tests.append(test)
 
     return unique_tests
 
+
 def ensure_ui_load_test(test_cases, main_feature, url):
 
-    has_ui_test = any(
-        test.get("type", "").lower() == "ui"
-        for test in test_cases
-    )
+    has_ui_test = any(test.get("type", "").lower() == "ui" for test in test_cases)
 
     if has_ui_test:
         return test_cases
 
-    test_cases.insert(0, {
-        "name": "TC_UI_001_LoadPage",
-        "type": "ui",
-        "priority": "high",
-        "steps": [
-            f"Accéder à l'URL : {url}"
-        ],
-        "expected_result":
-            "La page se charge correctement et les éléments principaux sont visibles.",
-        "selenium_script": "",
-        "cypress_script": ""
-    })
+    test_cases.insert(
+        0,
+        {
+            "name": "TC_UI_001_LoadPage",
+            "type": "ui",
+            "priority": "high",
+            "steps": [f"Accéder à l'URL : {url}"],
+            "expected_result": "La page se charge correctement et les éléments principaux sont visibles.",
+            "selenium_script": "",
+            "cypress_script": "",
+        },
+    )
 
     print("[AUTO] UI Load Test ajouté automatiquement")
 
     return test_cases
 
 
-def generate_tests_with_gemini(page_type, relevant_data, url):
+def ensure_security_tests(test_cases, url, test_types):
+    """
+    Ajoute des tests sécurité généraux si l'utilisateur a demandé security
+    et si Gemini n'a pas généré assez de tests sécurité.
+    """
+
+    if "security" not in test_types:
+        return test_cases
+
+    security_tests = [
+        test for test in test_cases if "security" in str(test.get("type", "")).lower()
+    ]
+
+    if len(security_tests) >= 2:
+        return test_cases
+
+    existing_names = {str(test.get("name", "")).lower() for test in test_cases}
+
+    if "tc_security_auto_001_verify_https_usage" not in existing_names:
+        test_cases.append(
+            {
+                "name": "TC_SECURITY_AUTO_001_VerifyHTTPSUsage",
+                "type": "security",
+                "priority": "high",
+                "steps": [
+                    f"Accéder à l'URL : {url}",
+                    "Vérifier que l'URL commence par https://",
+                ],
+                "expected_result": "La page doit être chargée via HTTPS afin d'assurer une connexion sécurisée.",
+                "selenium_script": "",
+                "cypress_script": "",
+            }
+        )
+
+    if (
+        "tc_security_auto_002_check_sensitive_information_exposure"
+        not in existing_names
+    ):
+        test_cases.append(
+            {
+                "name": "TC_SECURITY_AUTO_002_CheckSensitiveInformationExposure",
+                "type": "security",
+                "priority": "medium",
+                "steps": [
+                    f"Accéder à l'URL : {url}",
+                    "Inspecter les textes visibles de la page.",
+                    "Vérifier qu'aucune information sensible n'est affichée publiquement.",
+                ],
+                "expected_result": "La page ne doit pas afficher d'informations sensibles comme des mots de passe, tokens, clés API ou messages techniques internes.",
+                "selenium_script": "",
+                "cypress_script": "",
+            }
+        )
+
+    return test_cases
+
+
+def get_domain(value):
+    """
+    Retourne le domaine normalisé d'une URL.
+    """
+    try:
+        parsed = urlparse(value)
+        domain = parsed.netloc.lower()
+
+        if domain.startswith("www."):
+            domain = domain[4:]
+
+        return domain
+    except Exception:
+        return ""
+
+
+def is_external_url(candidate_url, base_url):
+    """
+    Vérifie si candidate_url pointe vers un domaine externe.
+    """
+    base_domain = get_domain(base_url)
+    candidate_domain = get_domain(candidate_url)
+
+    if not base_domain or not candidate_domain:
+        return False
+
+    return candidate_domain != base_domain and not candidate_domain.endswith(
+        "." + base_domain
+    )
+
+
+def extract_urls_from_text(text):
+    """
+    Extrait les URLs présentes dans un texte.
+    """
+    return re.findall(r"https?://[^\s\)\]\}\'\"]+", text)
+
+
+def detect_external_like_pages(relevant_data, base_url):
+    """
+    Détecte les pages qui appartiennent au domaine principal,
+    mais dont le contenu pointe majoritairement vers des domaines externes.
+
+    Exemple générique :
+    - page de redirection partenaire
+    - page de cours externe intégrée
+    - page de promotion externe
+    - page contenant surtout des liens vers une autre plateforme
+    """
+
+    external_like_pages = set()
+
+    for page in relevant_data.get("pages", []):
+        page_url = page.get("url", "")
+        links = page.get("links", [])
+
+        if not page_url or not isinstance(links, list):
+            continue
+
+        total_links = 0
+        external_links = 0
+        external_domains = set()
+
+        for link in links:
+            if not isinstance(link, dict):
+                continue
+
+            href = link.get("href") or link.get("url") or ""
+
+            if not href:
+                continue
+
+            domain = get_domain(href)
+
+            if not domain:
+                continue
+
+            total_links += 1
+
+            if is_external_url(href, base_url):
+                external_links += 1
+                external_domains.add(domain)
+
+        if total_links == 0:
+            continue
+
+        external_ratio = external_links / total_links
+
+        # Règle générique :
+        # si beaucoup de liens sortent vers un autre domaine,
+        # la page est considérée comme une page externe/partenaire.
+        if external_ratio >= 0.50 and len(external_domains) >= 1:
+            external_like_pages.add(page_url.lower())
+
+        # Autre cas :
+        # si une page contient beaucoup de liens vers le même domaine externe.
+        if len(external_domains) == 1 and external_links >= 5:
+            external_like_pages.add(page_url.lower())
+
+    return external_like_pages
+
+
+def filter_external_platform_tests(test_cases, base_url, relevant_data):
+    """
+    Supprime les tests qui ciblent des pages ou fonctionnalités externes
+    au site principal analysé.
+
+    Cette version est générique :
+    - aucun nom de site externe n'est écrit en dur
+    - aucune URL spécifique n'est écrite en dur
+    - le filtrage se base sur les domaines détectés automatiquement
+    """
+
+    filtered_tests = []
+
+    external_like_pages = detect_external_like_pages(relevant_data, base_url)
+
+    for test in test_cases:
+        test_text = json.dumps(test, ensure_ascii=False).lower()
+
+        urls = extract_urls_from_text(test_text)
+
+        contains_external_url = any(
+            is_external_url(candidate_url, base_url) for candidate_url in urls
+        )
+
+        targets_external_like_page = any(
+            page_url in test_text for page_url in external_like_pages
+        )
+
+        if contains_external_url:
+            print("[FILTER] Test avec URL externe supprimé :", test.get("name"))
+            continue
+
+        if targets_external_like_page:
+            print(
+                "[FILTER] Test sur page externe/partenaire supprimé :", test.get("name")
+            )
+            continue
+
+        filtered_tests.append(test)
+
+    return filtered_tests
+
+
+def generate_tests_with_gemini(
+    page_type,
+    relevant_data,
+    url,
+    analysis_scope="single_page",
+    target_feature="",
+    test_types=None,
+):
     """
     Génère des cas de test avec Gemini à partir :
     - du type de page,
@@ -125,414 +444,417 @@ def generate_tests_with_gemini(page_type, relevant_data, url):
     """
 
     features = relevant_data.get("features", [])
-    pages = relevant_data.get("pages", [])
-    analysis_scope = relevant_data.get("analysis_scope")
     main_feature = relevant_data.get("main_feature", "generic")
     priority_profile = relevant_data.get("priority_profile", {})
     site_structure = relevant_data.get("site_structure", {})
     semantic_actions = relevant_data.get("semantic_actions", [])
 
+    test_credentials = relevant_data.get("test_credentials", {})
+
+    if test_types is None:
+        test_types = relevant_data.get("test_types", ["functional", "ui"])
+
     if not analysis_scope:
-       if main_feature == "multi_page_analysis" and len(pages) > 3:
-          analysis_scope = "full_site"
-       elif page_type != "generic":
-          analysis_scope = "single_interface"
-       else:
-          analysis_scope="single_interface"
+        analysis_scope = relevant_data.get("analysis_scope", "single_page")
+
+    if not target_feature:
+        target_feature = relevant_data.get("target_feature", "")
+
+    if analysis_scope not in ["single_page", "full_site", "specific_feature"]:
+        analysis_scope = "single_page"
+
+    if analysis_scope != "specific_feature":
+        target_feature = ""
+
+    relevant_data["analysis_scope"] = analysis_scope
+    relevant_data["target_feature"] = target_feature
+    relevant_data["test_types"] = test_types
 
     prompt = f"""
 Tu es un expert QA Automation senior spécialisé en tests web, Selenium et Cypress.
 
 Ta mission :
-Générer des cas de test web professionnels à partir d'une analyse DOM multi-pages.
+Générer des cas de test web professionnels, pertinents et exécutables à partir d'une analyse DOM multi-pages.
+
+Tu dois respecter strictement :
+- le scope d'analyse choisi
+- les types de tests demandés
+- les éléments réellement détectés dans le DOM
+- les données de test visibles dans la page
+- le domaine principal analysé
 
 ==================================================
-URL PRINCIPALE ANALYSÉE
+CONTEXTE D'ANALYSE
 ==================================================
+
+URL PRINCIPALE ANALYSÉE :
 {url}
 
-==================================================
-TYPE D'ANALYSE
-==================================================
+TYPE DE PAGE :
 {page_type}
 
-==================================================
-SCOPE D'ANALYSE
-==================================================
+SCOPE D'ANALYSE :
 {analysis_scope}
 
-==================================================
-FONCTIONNALITÉ MÉTIER PRINCIPALE
-==================================================
+FONCTIONNALITÉ CIBLE DEMANDÉE :
+{target_feature if target_feature else "Aucune fonctionnalité précise demandée"}
+
+TYPES DE TESTS DEMANDÉS :
+{json.dumps(test_types, ensure_ascii=False, indent=2)}
+
+FONCTIONNALITÉ MÉTIER PRINCIPALE :
 {main_feature}
 
-==================================================
-FONCTIONNALITÉS MÉTIER DÉTECTÉES
-==================================================
+FONCTIONNALITÉS MÉTIER DÉTECTÉES :
 {json.dumps(features, ensure_ascii=False, indent=2)}
 
-==================================================
-PAGES ANALYSÉES
-==================================================
+PAGES ANALYSÉES :
 {json.dumps(relevant_data.get("pages", []), ensure_ascii=False, indent=2)}
 
-==================================================
-ÉLÉMENTS DOM DÉTECTÉS
-==================================================
+ÉLÉMENTS DOM DÉTECTÉS :
 {json.dumps(relevant_data, ensure_ascii=False, indent=2)}
 
-==================================================
-PROFIL DE PRIORITÉ MÉTIER
-==================================================
-{priority_profile}
-==================================================
-STRUCTURE DU SITE ANALYSÉ
-==================================================
+IDENTIFIANTS DE TEST DÉTECTÉS :
+{json.dumps(test_credentials, ensure_ascii=False, indent=2)}
+
+PROFIL DE PRIORITÉ MÉTIER :
+{json.dumps(priority_profile, ensure_ascii=False, indent=2)}
+
+STRUCTURE DU SITE ANALYSÉ :
 {json.dumps(site_structure, ensure_ascii=False, indent=2)}
-==================================================
-ACTIONS FONCTIONNELLES DÉTECTÉES
-==================================================
+
+ACTIONS FONCTIONNELLES DÉTECTÉES :
 {json.dumps(semantic_actions, ensure_ascii=False, indent=2)}
 
-OBJECTIF DE COUVERTURE
+==================================================
+RÈGLES GÉNÉRALES OBLIGATOIRES
 ==================================================
 
-OBJECTIF DE COUVERTURE
+- Utilise uniquement les fonctionnalités réellement détectées.
+- Utilise uniquement les ids, names, classes, hrefs, textes visibles et attributs présents dans les données fournies.
+- Ne crée jamais une fonctionnalité absente du DOM.
+- Ne crée jamais un bouton, champ, message, lien ou workflow qui n'existe pas dans les données analysées.
+- Ne génère pas deux cas de test qui vérifient exactement le même comportement avec les mêmes données.
+- Chaque cas de test doit avoir un objectif clair et distinct.
+- Les étapes doivent être simples, claires et exécutables.
+- Les résultats attendus doivent être basés sur un comportement observable :
+  - redirection
+  - changement d'URL
+  - élément visible
+  - élément masqué
+  - bouton activé ou désactivé
+  - validation HTML5
+  - message exact si détecté
+- Si un message exact est présent dans le DOM, utilise-le exactement sans le reformuler.
+- Si aucun message exact n'est détecté, n'invente pas un texte précis. Utilise un résultat attendu générique basé sur le comportement observable.
+
 ==================================================
-RÈGLES DE COUVERTURE OBLIGATOIRES
+RÈGLES DE SCOPE
 ==================================================
 
-Pour chaque page fonctionnelle analysée :
+CAS 1 : SCOPE = single_page
 
-- Générer au moins un test UI de chargement de page.
-- Vérifier au minimum :
-  - le chargement correct de l'URL
-  - le titre de la page si détecté
-  - la présence des éléments principaux détectés
-  - l'absence d'erreur visible de chargement
-
-Tu dois adapter la génération selon le SCOPE D'ANALYSE.
-
-CAS 1 : SCOPE = single_interface
-- Génère entre 8 et 20 cas de test.
-- Centre la génération sur l'URL PRINCIPALE ANALYSÉE.
+- Génère entre 8 et 15 cas de test maximum.
+- Centre les tests sur l'URL PRINCIPALE ANALYSÉE.
 - Les pages secondaires servent seulement comme contexte.
-- Ne génère pas un test UI pour chaque page secondaire.
-- Ne génère pas des tests de formulaires présents sur des pages secondaires.
-Inclure aussi quelques tests secondaires de navigation globale visibles sur la page principale :
-- liens principaux de la navbar/header
-- logo si présent
-- liens footer importants comme Privacy Policy
-
-Ces tests doivent être générés une seule fois, avec priorité medium ou low.
-Ils peuvent représenter jusqu'à 40% du total si la page contient plusieurs liens de navigation visibles.
-
+- Ne teste pas les fonctionnalités internes des pages secondaires.
 - Priorité :
-  1. fonctionnalité métier principale de l'URL
-  2. scénarios positifs
-  3. scénarios négatifs
+  1. fonctionnalité métier principale
+  2. scénario positif principal
+  3. scénarios négatifs importants
   4. validations de champs
-  5. navigation métier directe 
+  5. navigation visible depuis la page principale
 
-RÈGLES SELON LA FONCTIONNALITÉ MÉTIER PRINCIPALE :
+Navigation secondaire autorisée :
+- liens principaux du header/navbar visibles sur la page principale
+- logo cliquable si détecté
+- liens footer importants visibles, comme Privacy Policy ou lien copyright
+- ces tests doivent être générés une seule fois
+- priorité medium pour header/logo
+- priorité low pour footer
+
+CAS 2 : SCOPE = specific_feature
+
+- Génère uniquement des tests liés à la fonctionnalité cible :
+{target_feature if target_feature else "Aucune"}
+- Ignore les fonctionnalités non liées.
+- Ne génère pas de tests globaux du site.
+- Ne génère pas de tests de navigation sauf si nécessaire pour atteindre la fonctionnalité.
+- Génère entre 6 et 12 cas de test.
+- Priorité :
+  1. scénario positif de la fonctionnalité ciblée
+  2. scénarios négatifs
+  3. validations de champs
+  4. comportements limites
+
+CAS 3 : SCOPE = full_site
+
+- Génère entre 25 et 80 cas de test selon la richesse du site.
+- Couvre les pages principales détectées.
+- Pour chaque page importante :
+  1. générer un test UI de chargement
+  2. générer les tests métier liés aux éléments principaux
+  3. générer les tests de formulaire si un vrai formulaire existe
+  4. générer les tests positifs et négatifs utiles
+  5. générer les tests de boutons importants
+- La navigation globale header/footer doit être testée une seule fois pour tout le site.
+- Ne répète pas le même lien global depuis chaque page.
+
+==================================================
+RÈGLES SELON LA FONCTIONNALITÉ MÉTIER PRINCIPALE
+==================================================
 
 Si main_feature = authentication :
--Le premier cas de test doit être un test UI de chargement de la page de connexion.
+
+- Le premier cas doit être un test UI de chargement de la page login.
 - Génère principalement des tests d'authentification.
-- Inclure au minimum :
+- Inclure si les éléments existent :
   1. chargement de la page login
-  2. login avec identifiants valides
-  3. login avec username/email invalide
-  4. login avec password invalide
-  5. login avec username/email vide
-  6. login avec password vide
-  7. login avec champs vides
-  8. vérification de la redirection ou du message de succès
-  9. vérification du bouton logout si détecté
-
-Après les tests d'authentification, ajoute les tests secondaires visibles sur la page principale :
-- générer un test pour chaque lien principal de la navbar/header visible sur la page principale
-- générer un test pour le logo s'il est cliquable
-- générer un test pour chaque lien footer visible, y compris le nom du site/copyright et Privacy Policy
-- ces tests doivent être générés une seule fois
-- ces tests doivent avoir une priorité medium pour header/logo et low pour footer
-- ne génère pas les fonctionnalités internes des pages secondaires
-
-Ces tests doivent rester secondaires et ne doivent pas dominer les tests d'authentification.
-Ne génère pas de tests de formulaires ou fonctionnalités internes des pages secondaires.
+  2. connexion avec identifiants valides
+  3. connexion avec username/email invalide
+  4. connexion avec password invalide
+  5. connexion avec username/email vide
+  6. connexion avec password vide
+  7. connexion avec champs vides
+  8. vérification de redirection ou succès observable
+  9. vérification du bouton/lien logout si détecté
 
 Si main_feature = contact_form :
+
 - Génère principalement des tests de formulaire de contact.
-- Inclure : soumission valide, email invalide, champs obligatoires vides, message vide.
+- Inclure si les champs existent :
+  1. chargement de la page contact
+  2. soumission valide
+  3. email invalide
+  4. champ obligatoire vide
+  5. message vide
+  6. validation des erreurs visibles
 
 Si main_feature = registration :
+
 - Génère principalement des tests d'inscription.
-- Inclure : inscription valide, email invalide, mot de passe faible, confirmation mot de passe différente, champs requis vides.
+- Inclure si les champs existent :
+  1. inscription valide
+  2. email invalide
+  3. mot de passe faible
+  4. confirmation différente
+  5. champs requis vides
 
 Si main_feature = search :
+
 - Génère principalement des tests de recherche.
-- Inclure : recherche valide, recherche vide, recherche sans résultat, recherche avec caractères spéciaux.
+- Inclure si le champ existe :
+  1. recherche valide
+  2. recherche vide
+  3. recherche sans résultat
+  4. recherche avec caractères spéciaux
 
 Si main_feature = ecommerce :
+
 - Génère principalement des tests panier/checkout.
-- Inclure : ajouter au panier, modifier quantité, supprimer produit, checkout, paiement invalide.
+- Inclure seulement les actions détectées :
+  1. ajout au panier
+  2. modification quantité
+  3. suppression produit
+  4. checkout
+  5. paiement invalide
 
-Pour le footer :
+==================================================
+RÈGLES SUR LES ACTIONS FONCTIONNELLES DÉTECTÉES
+==================================================
 
-- Génère un test séparé pour chaque lien footer visible.
-- Même si un lien footer pointe vers la même URL qu'un lien header ou logo, il doit être testé séparément car l'élément source est différent.
-- Inclure notamment :
-  1. le lien du nom du site/copyright s'il est cliquable
-  2. Privacy Policy s'il est visible
-- Les tests footer doivent avoir une priorité low.
+Pour chaque action dans ACTIONS FONCTIONNELLES DÉTECTÉES :
 
-CAS 2 : SCOPE = full_site
-IMPORTANT :
-Si SCOPE = full_site, ne concentre pas la génération uniquement sur main_feature.
-main_feature sert seulement de contexte.
-La génération doit couvrir les pages principales listées dans STRUCTURE DU SITE ANALYSÉ.
-- Génère entre 25 et 80 cas de test selon la richesse du site.
-- Analyse toutes les pages présentes dans relevant_data["pages"].
-- Regroupe les cas de test par page ou par fonctionnalité métier.
-
-Pour chaque page importante :
-1. Générer un test UI de chargement.
-2. Générer les tests métier liés aux éléments principaux de cette page.
-3. Générer les tests de formulaire si un formulaire réel est détecté.
-4. Générer les tests positifs et négatifs utiles uniquement si les champs nécessaires existent.
-5. Générer les tests de boutons d'action importants.
-
-Navigation globale :
-- Générer les tests de header/navbar une seule fois pour tout le site.
-- Générer les tests de footer une seule fois pour tout le site.
-- Ne pas répéter Home, Contact, Blog, Courses, Privacy Policy depuis chaque page.
-- Si le même lien apparaît dans plusieurs pages, le considérer comme navigation globale.
-
-Navigation métier :
-- Générer les tests pour les liens spécifiques à une page.
-- Exemple : lien vers détail produit, article, exercice, checkout, dashboard, etc.
-Actions fonctionnelles détectées :
-
-IMPORTANT :
-
-Lorsque navigation_action contient sample_labels :
-
-- Générer un test pour chaque lien métier significatif.
-- Utiliser sample_labels comme source principale.
-- Ne pas se limiter à un seul lien.
-
-Exemples :
-- Read More
-- View
-- Enroll
-- Article
-- Course
-- Product
-- Detail
-- Practice
-- Login
-
-Chaque lien métier important détecté doit produire son propre cas de test.
-
---------------------------------------------------
-
-Lorsque button_action contient sample_labels :
-
-- Générer un test distinct pour chaque bouton métier détecté.
-- Utiliser les libellés présents dans sample_labels.
-
-Exemples :
-
-Si sample_labels contient :
-
-[
- "Edit",
- "Save",
- "Add",
- "Remove"
-]
-
-alors générer :
-
-TC_BUTTON_Edit
-TC_BUTTON_Save
-TC_BUTTON_Add
-TC_BUTTON_Remove
-
-Ne jamais fusionner plusieurs boutons métiers dans un seul test.
-
-- Si type = detail_navigation :
-  générer un test distinct pour chaque lien de détail détecté 
-  Utiliser ces liens pour tester :
-  - ouverture d'un détail
-  - article
-  - cours
-  - produit
-  - page d'information
-  - contenu approfondi
-
-Si plusieurs liens ont le même libellé mais des href différents, générer un test par href distinct.
-Ne pas fusionner automatiquement les liens qui ont le même texte.
-
-Lorsque sample_labels existe :
-- Utiliser sample_labels pour nommer les tests.
-- Ne pas générer seulement un test générique.
-- Générer plusieurs tests si plusieurs labels métier importants sont détectés.
-
-Pour chaque élément présent dans ACTIONS FONCTIONNELLES DÉTECTÉES :
-
-Lorsque button_action contient sample_labels :
-
-- Générer un test distinct pour chaque bouton métier détecté.
-- Utiliser les libellés présents dans sample_labels.
-- Ne pas fusionner plusieurs boutons dans un seul test.
-
-- Générer au moins un cas de test pertinent.
 - Si type = form_interaction :
   générer des tests de saisie et validation.
 
 - Si type = submit_action :
   générer des tests de soumission.
 
-- Si type = select_filter_action :
-  utiliser filters[].label et filters[].options.
-  Générer un scénario complet par filtre dropdown :
-  1. sélectionner chaque option importante
-  2. vérifier le changement observable
-  3. tester le retour à l’option par défaut si elle existe
-
-- Si type = choice_filter_action :
-  ne génère pas seulement un test isolé pour une seule option.
-  Génère un scénario complet de filtrage couvrant :
-  1. chaque option radio détectée dans radio_options
-  2. chaque option checkbox détectée dans checkbox_options
-  3. quelques combinaisons pertinentes radio + checkbox sans générer toutes les combinaisons possibles
-  4. le bouton reset si détecté
-
 - Si type = navigation_action :
-  générer des tests de navigation.
+  générer des tests de navigation vers les liens internes importants.
 
 - Si type = repeated_detail_navigation :
-  générer des tests d'ouverture de détails.
-
+  générer un test distinct pour chaque lien métier significatif.
 
 - Si type = button_action :
-  générer des tests de clic sur les boutons.
+  générer un test distinct pour chaque bouton métier détecté.
 
-- Si type = multi_step_interaction :
-  générer un scénario utilisateur multi-étapes.
-  Le scénario doit :
-  1. cliquer sur le bouton ou l'action déclencheuse
-  2. vérifier si de nouveaux éléments apparaissent
-  3. vérifier les changements visibles dans l'interface
-  4. tester les nouvelles actions disponibles si elles sont détectées
-  5. vérifier que le workflow complet fonctionne correctement
+- Si type = select_filter_action :
+  générer un scénario de filtrage pour les options importantes détectées.
 
-- Si type = multi_step_workflow :
-  générer un scénario multi-étapes basé uniquement sur les boutons détectés dans trigger_buttons.
-  Cliquer sur l'action déclencheuse détectée.
-  Vérifier si l'interface change : nouvel élément visible, champ activé/désactivé, bouton affiché/masqué, ligne ajoutée/supprimée ou contenu modifié.
-  Si de nouveaux boutons/actions deviennent visibles après l'interaction, générer des étapes pour les tester.
-  Ne jamais inventer une action non détectée explicitement.
+- Si type = choice_filter_action :
+  générer un scénario couvrant les radios, checkboxes et reset si détectés.
 
-Liens externes :
-- Générer uniquement les liens externes importants pour le métier.
-- Ignorer les liens externes publicitaires, sociaux ou partenaires sauf s'ils sont des CTA principaux.
+- Si type = multi_step_interaction ou multi_step_workflow :
+  générer un scénario utilisateur multi-étapes uniquement avec les boutons et éléments détectés.
 
-Répartition recommandée :
-- 40% tests UI et chargement des pages importantes
-- 30% tests métier/formulaires
-- 20% navigation interne métier
-- 10% header/footer/liens globaux
-
-
+Si sample_labels existe :
+- utilise sample_labels pour nommer les tests
+- génère plusieurs tests si plusieurs éléments importants existent
+- ne fusionne pas plusieurs boutons ou liens métier dans un seul test
 
 ==================================================
-RÈGLES IMPORTANTES
+RÈGLES SUR LES LIENS EXTERNES
 ==================================================
 
-- Utilise uniquement les fonctionnalités réellement détectées.
-- Utilise les vrais ids, names, classes, hrefs et textes visibles présents dans le DOM.
-- Ne crée pas de fonctionnalités qui n'existent pas.
-- Les résultats attendus doivent être dérivés uniquement des informations détectées dans le DOM, le HTML, les attributs, les textes visibles, les URLs, ou les données d'analyse fournies.
-- Si un message exact est présent dans le DOM ou dans les données analysées, utilise exactement ce message sans le reformuler.
-- Si aucun message exact n'est détecté, formule un expected_result générique basé sur le comportement observable : redirection, changement d'URL, élément visible, élément masqué, bouton activé/désactivé, validation HTML5.
-- Ne crée jamais un message d'erreur textuel spécifique qui n'existe pas dans les données analysées.
-- Ne suppose jamais un texte exact si ce texte n'est pas présent dans le DOM ou dans relevant_data.
+- Le moteur doit rester centré sur le domaine principal analysé.
+- Ne génère pas de tests pour les fonctionnalités internes d'un domaine externe.
+- Si un lien visible mène vers un domaine externe, tu peux vérifier uniquement que le lien existe ou redirige, mais tu ne dois pas tester la page externe.
+- Ne teste pas les boutons, formulaires, recherche, panier, inscription ou connexion d'un site externe.
+- Les liens internes du domaine principal sont autorisés.
 
-- Évite les doublons sémantiques.
-- Ne génère pas deux cas de test qui vérifient exactement le même comportement avec les mêmes données.
-- Chaque cas de test doit avoir un objectif métier distinct.
-- Évite les doublons.
-Pour les scénarios négatifs :
-- Si le message exact associé à ce scénario n'est pas clairement détecté, ne réutilise pas le message d'un autre scénario.
-- Utilise un résultat observable générique : l'utilisateur reste sur la même page, aucune session n'est créée, ou un message d'erreur est affiché.
-- Les étapes doivent être claires et exécutables.
+==================================================
+RÈGLES SELON LES TYPES DE TESTS DEMANDÉS
+==================================================
+
+Tu dois respecter strictement TYPES DE TESTS DEMANDÉS.
+
+Si "functional" n'est pas dans test_types :
+- ne génère pas de tests fonctionnels métier.
+
+Si "ui" n'est pas dans test_types :
+- ne génère pas de tests purement UI.
+
+Si "security" est dans test_types :
+- génère au moins 2 tests sécurité.
+- Si des champs texte existent, teste XSS simple et injection SQL simple.
+- Si un champ password existe, vérifie qu'il est masqué.
+- Si aucun champ n'existe, génère des tests sécurité généraux :
+  - HTTPS
+  - absence d'informations sensibles visibles
+  - liens internes non vides
+  - absence de redirection inattendue
+
+Si "security" n'est pas dans test_types :
+- ne génère aucun test sécurité.
+
+Si "seo" est dans test_types :
+- génère au moins 2 tests SEO.
+- Vérifie selon les éléments détectés :
+  - title
+  - URL lisible
+  - H1
+  - href vide
+  - image sans alt
+
+Si "seo" n'est pas dans test_types :
+- ne génère aucun test SEO.
+
+==================================================
+RÈGLES SUR LES DONNÉES DE TEST
+==================================================
+
+- Si des données de test sont visibles dans la page ou dans les données analysées, utilise-les exactement sans les modifier.
+- Ne remplace jamais une valeur détectée par une valeur générique.
+- Si IDENTIFIANTS DE TEST DÉTECTÉS contient un username/email/login et un password :
+  - utilise ces valeurs exactes pour le scénario positif de login
+  - utilise ces valeurs exactes dans le script Selenium
+  - utilise ces valeurs exactes dans le script Cypress
+  - ne les modifie pas
+  - ne les reformule pas
+  - ne les remplace pas par des valeurs génériques
+- Les valeurs génériques sont autorisées seulement si aucune donnée réelle adaptée n'est détectée.
+- Pour les tests négatifs, tu peux utiliser des valeurs invalides afin de provoquer une erreur.
+- Si aucune donnée réelle n'est détectée, utilise des valeurs génériques adaptées :
+  - username : test_user
+  - email : test@example.com
+  - password : SecureTestValueA9!
+  - search : test
+  - message : Ceci est un message de test
+- Ne crée jamais de données spécifiques à un site particulier.
+
+==================================================
+RÈGLES POUR LES SCRIPTS SELENIUM
+==================================================
+
 - Les scripts Selenium doivent être en Python.
-- Les scripts Cypress doivent être en JavaScript.
-- Les scripts doivent être simples, lisibles et directement exploitables.
-- Pour les scripts Selenium, utilise prioritairement safe_find_element(driver, selectors).
-- Ne pas créer la fonction safe_find_element : elle existe déjà dans l'environnement d'exécution.
-- Évite driver.find_element(...) quand plusieurs sélecteurs sont possibles.
-- Utilise driver.find_element(...) seulement si un seul sélecteur fiable existe.
-- Les scripts Selenium peuvent utiliser :
-  By.ID
-  By.NAME
-  By.CLASS_NAME
-  By.CSS_SELECTOR
-  By.LINK_TEXT
-- Exemple obligatoire :
-from selenium.webdriver.common.by import By
+- Utilise l'URL réelle : {url}
+- Utilise prioritairement safe_find_element(driver, selectors).
+- Ne crée pas la fonction safe_find_element : elle existe déjà.
+- Utilise plusieurs sélecteurs fiables quand ils existent.
+- Utilise driver.find_element seulement si un seul sélecteur fiable existe.
+- Les sélecteurs autorisés :
+  - By.ID
+  - By.NAME
+  - By.CLASS_NAME
+  - By.CSS_SELECTOR
+  - By.LINK_TEXT
+  - By.XPATH
+- N'utilise jamais :
+  - find_element_by_id
+  - find_element_by_class_name
+  - find_element_by_link_text
+- Mets des assertions simples quand c'est possible.
+- Ne mets pas driver.quit().
+- Ne crée pas de configuration webdriver.
+- Ne crée pas d'import inutile si l'environnement l'a déjà.
+
+Exemple de style attendu :
 
 element = safe_find_element(driver, [
-    (By.ID, "username"),
-    (By.NAME, "username"),
-    (By.CSS_SELECTOR, "input[name='username']")
+    (By.ID, "id_detecte"),
+    (By.NAME, "name_detecte"),
+    (By.CSS_SELECTOR, "selecteur_detecte")
 ])
-element.send_keys("student")
+element.send_keys("valeur_adaptee")
 
 button = safe_find_element(driver, [
-    (By.ID, "submit"),
-    (By.NAME, "submit"),
-    (By.CSS_SELECTOR, "button[type='submit']"),
-    (By.CSS_SELECTOR, "input[type='submit']")
+    (By.ID, "id_bouton_detecte"),
+    (By.CSS_SELECTOR, "selecteur_bouton_detecte")
 ])
 button.click()
 
-- N'utilise jamais :
-  find_element_by_id
-  find_element_by_class_name
-  find_element_by_link_text
-- Mets des assertions simples dans les scripts quand c'est possible.
-- Utilise l'URL réelle : {url}
+RÈGLES SPÉCIALES POUR LES TESTS XSS :
+- Pour les tests de sécurité XSS sur un formulaire, ne pas exiger obligatoirement un message de succès après soumission.
+- Vérifier uniquement qu'aucune alerte JavaScript ne s'exécute.
+- Si un captcha/reCAPTCHA bloque la soumission, le test doit être considéré comme pending et non fail.
+- Ne jamais générer un bloc try/except vide.
+- Dans un bloc except, toujours mettre au minimum pass.
+- Ne pas ajouter une assertion obligatoire du type "Thank you" pour valider un test XSS.
+
 
 ==================================================
-FORMAT OBLIGATOIRE
+RÈGLES POUR LES SCRIPTS CYPRESS
+==================================================
+
+- Les scripts Cypress doivent être en JavaScript.
+- Utilise cy.visit avec l'URL réelle.
+- Utilise les vrais sélecteurs détectés.
+- Ne crée pas de sélecteurs inexistants.
+- Ajoute des vérifications simples quand c'est possible :
+  - should('be.visible')
+  - should('include')
+  - should('contain')
+  - should('not.be.empty')
+
+==================================================
+FORMAT OBLIGATOIRE DE SORTIE
 ==================================================
 
 Retourne uniquement un JSON valide.
-Aucun texte avant.
-Aucun texte après.
+Aucun texte avant le JSON.
+Aucun texte après le JSON.
 Pas de ```json.
+Pas de commentaire.
 
 Le format exact doit être :
 
 [
   {{
-    "name": "TC_AUTH_001_RegisterUserSuccessfully",
-    "type": "positive | negative | functional | navigation | validation | ui",
+    "name": "TC_EXAMPLE_001_TestName",
+    "type": "positive | negative | functional | navigation | validation | ui | security | seo",
     "priority": "high | medium | low",
     "steps": [
       "Étape 1",
       "Étape 2"
     ],
-    "expected_result": "Résultat attendu clair",
+    "expected_result": "Résultat attendu clair et vérifiable",
     "selenium_script": "Script Selenium Python complet ou partiel mais exécutable",
     "cypress_script": "Script Cypress JavaScript complet ou partiel mais exécutable"
   }}
 ]
 
-IMPORTANT :
 Chaque objet doit contenir obligatoirement :
 - name
 - type
@@ -545,8 +867,7 @@ Chaque objet doit contenir obligatoirement :
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+            model="gemini-2.5-flash", contents=prompt
         )
 
         content = response.text.strip()
@@ -559,67 +880,68 @@ Chaque objet doit contenir obligatoirement :
 
         normalized_tests = []
 
-# Convertir relevant_data en texte pour faciliter la recherche
+        # Convertir relevant_data en texte pour faciliter la recherche
         dom_text = json.dumps(relevant_data).lower()
 
         for test in test_cases:
+            if not isinstance(test, dict):
+                continue
 
-           if not isinstance(test, dict):
-              continue
+            normalized_test = normalize_test_case(test)
 
-           normalized_test = normalize_test_case(test)
+            normalized_test = enforce_detected_login_credentials(
+                normalized_test, test_credentials
+            )
 
-           test_text = json.dumps(normalized_test).lower()
+            test_text = json.dumps(normalized_test).lower()
 
-    # ==================================================
-    # FILTRE ANTI-FAUX ÉLÉMENTS
-    # ==================================================
+            # ==================================================
+            # FILTRE ANTI-FAUX ÉLÉMENTS
+            # ==================================================
 
-           forbidden_fake_elements = [
-               "toggle-navigation",
-              "open menu"
-           ]
+            forbidden_fake_elements = ["toggle-navigation", "open menu"]
 
-           fake_detected = False
+            fake_detected = False
 
-           for fake_element in forbidden_fake_elements:
-
-        # Si Gemini génère un élément absent du DOM
-               if fake_element in test_text and fake_element not in dom_text:
-
-                    print(
-                        f"[FILTER] Faux élément détecté supprimé : {fake_element}"
-                    )
+            for fake_element in forbidden_fake_elements:
+                # Si Gemini génère un élément absent du DOM
+                if fake_element in test_text and fake_element not in dom_text:
+                    print(f"[FILTER] Faux élément détecté supprimé : {fake_element}")
 
                     fake_detected = True
                     break
 
-           if fake_detected:
-              continue
+            if fake_detected:
+                continue
 
-           normalized_tests.append(normalized_test)
+            normalized_tests.append(normalized_test)
 
         normalized_tests = post_process_generated_tests(
-          normalized_tests,
-          main_feature,
-          dom_text
+            normalized_tests, main_feature, dom_text
         )
-        normalized_tests = ensure_ui_load_test(
-          normalized_tests,
-          main_feature,
-          url
+        if "ui" in test_types:
+            normalized_tests = ensure_ui_load_test(normalized_tests, main_feature, url)
+
+        if analysis_scope in ["single_page", "specific_feature"]:
+            semantic_actions = [
+                action for action in semantic_actions if action.get("page_url") == url
+            ]
+
+        normalized_tests = enrich_missing_tests(normalized_tests, semantic_actions)
+
+        normalized_tests = filter_external_platform_tests(
+            normalized_tests, url, relevant_data
         )
 
-        normalized_tests = enrich_missing_tests(
-          normalized_tests,
-          semantic_actions
+        normalized_tests = enrich_security_and_seo_tests(
+            normalized_tests, relevant_data, url, test_types
         )
 
         return {
             "success": True,
             "source": "gemini_ai",
             "test_cases": normalized_tests,
-            "error": None
+            "error": None,
         }
 
     except Exception as e:
@@ -627,5 +949,5 @@ Chaque objet doit contenir obligatoirement :
             "success": False,
             "source": "gemini_ai",
             "test_cases": [],
-            "error": str(e)
+            "error": str(e),
         }

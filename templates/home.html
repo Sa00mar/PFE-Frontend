@@ -2,18 +2,229 @@
 
 {% block title %}Dashboard{% endblock %}
 
+{% block styles %}
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
 
-</div>
+<div class="dashboard-page">
 
-<div class="content-area">
-    <div class="welcome-container">
-        <h2 class="welcome-title">Bienvenue sur TestFlow</h2>
-        <p class="welcome-desc">Testez et validez les performances de vos sites avec nos outils avancés.</p>
+    <div class="dashboard-hero">
+        <div>
+            <h1>Bienvenue sur TestFlow</h1>
+            <p>
+                Suivez l’état global de vos analyses, vos tests générés et vos exécutions.
+            </p>
+        </div>
+
         <a href="{{ url_for('main.new_test') }}" class="btn-create-test">
-            <i class="fas fa-plus-circle"></i> Créer un nouveau test
+            <i class="fas fa-plus-circle"></i>
+            Créer un nouveau test
         </a>
     </div>
+
+    <div class="stats-grid-dashboard">
+
+        <div class="dashboard-stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-globe"></i>
+            </div>
+            <div>
+                <h3>{{ stats.total_analyses }}</h3>
+                <p>Analyses lancées</p>
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-list-check"></i>
+            </div>
+            <div>
+                <h3>{{ stats.total_tests }}</h3>
+                <p>Tests générés</p>
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-play-circle"></i>
+            </div>
+            <div>
+                <h3>{{ stats.total_executions }}</h3>
+                <p>Tests exécutés</p>
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div>
+                <h3>{{ stats.success_rate }}%</h3>
+                <p>Taux de réussite</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="execution-summary-grid">
+
+        <div class="summary-card pass">
+            <span>{{ stats.passed }}</span>
+            <p>PASS</p>
+        </div>
+
+        <div class="summary-card fail">
+            <span>{{ stats.failed }}</span>
+            <p>FAIL</p>
+        </div>
+
+        <div class="summary-card pending">
+            <span>{{ stats.pending }}</span>
+            <p>PENDING</p>
+        </div>
+
+    </div>
+
+    <section class="dashboard-panel charts-panel">
+        <div class="panel-header">
+            <h2>Graphiques simples</h2>
+        </div>
+
+        <div class="simple-charts-grid">
+
+            <div class="chart-box">
+                <h3>Répartition des résultats</h3>
+
+                {% set total_results = stats.passed + stats.failed + stats.pending %}
+
+                <div class="chart-line">
+                    <div class="chart-label">
+                        <span>PASS</span>
+                        <strong>{{ stats.passed }}</strong>
+                    </div>
+                    <div class="chart-bar">
+                        <div class="chart-fill pass-fill"
+                            data-percent="{{ (stats.passed * 100 / total_results) if total_results > 0 else 0 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-line">
+                    <div class="chart-label">
+                        <span>FAIL</span>
+                        <strong>{{ stats.failed }}</strong>
+                    </div>
+                    <div class="chart-bar">
+                        <div class="chart-fill fail-fill"
+                            data-percent="{{ (stats.failed * 100 / total_results) if total_results > 0 else 0 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-line">
+                    <div class="chart-label">
+                        <span>PENDING</span>
+                        <strong>{{ stats.pending }}</strong>
+                    </div>
+                    <div class="chart-bar">
+                        <div class="chart-fill pending-fill"
+                            data-percent="{{ (stats.pending * 100 / total_results) if total_results > 0 else 0 }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3>Taux de réussite par URL</h3>
+
+                {% if url_rates %}
+                {% for item in url_rates %}
+                <div class="url-rate-item">
+                    <div class="url-rate-header">
+                        <span class="url-rate-text">{{ item.url }}</span>
+                        <strong>{{ item.success_rate }}%</strong>
+                    </div>
+
+                    <div class="chart-bar">
+                        <div class="chart-fill pass-fill" data-percent="{{ item.success_rate }}"></div>
+                    </div>
+
+                    <div class="url-rate-details">
+                        {{ item.passed }} PASS /
+                        {{ item.failed }} FAIL /
+                        {{ item.pending }} PENDING
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="empty-chart-text">
+                    Aucune URL exécutée pour le moment.
+                </p>
+                {% endif %}
+            </div>
+
+        </div>
+    </section>
+
+    <div class="dashboard-sections">
+
+        <section class="dashboard-panel">
+            <div class="panel-header">
+                <h2>État global des tests</h2>
+            </div>
+
+            {% if stats.total_executions == 0 %}
+            <p class="dashboard-message pending-message">
+                Aucun test n’a encore été exécuté. Lancez une analyse puis exécutez les cas de test générés.
+            </p>
+
+            {% elif stats.failed > 0 %}
+            <p class="dashboard-message fail-message">
+                Des anomalies ont été détectées. Consultez l’interface Mes Tests pour analyser les échecs et générer le
+                rapport détaillé.
+            </p>
+
+            {% elif stats.pending > 0 %}
+            <p class="dashboard-message pending-message">
+                Certains tests sont en attente. Ils peuvent nécessiter une intervention manuelle ou être bloqués par un
+                élément non automatisable.
+            </p>
+
+            {% else %}
+            <p class="dashboard-message pass-message">
+                L’état global est satisfaisant. Tous les tests exécutés sont passés avec succès.
+            </p>
+            {% endif %}
+        </section>
+
+        <section class="dashboard-panel">
+            <div class="panel-header">
+                <h2>Actions rapides</h2>
+            </div>
+
+            <div class="quick-actions">
+                <a href="{{ url_for('main.my_tests') }}" class="quick-action-card">
+                    <i class="fas fa-list-check"></i>
+                    <span>Voir Mes Tests</span>
+                </a>
+            </div>
+        </section>
+
+    </div>
+
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".chart-fill").forEach(function (bar) {
+            const percent = bar.dataset.percent || 0;
+            bar.style.width = percent + "%";
+        });
+    });
+</script>
 {% endblock %}
