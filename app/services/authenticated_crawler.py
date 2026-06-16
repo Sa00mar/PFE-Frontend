@@ -1,5 +1,5 @@
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -9,58 +9,135 @@ from selenium.webdriver.chrome.options import Options
 from app.services.html_parser import parse_html
 
 
+def normalize_url_without_fragment(url):
+    """
+    Supprime l'ancre #section d'une URL pour éviter les doublons.
+    """
+    parsed = urlparse(url)
+    return urlunparse(parsed._replace(fragment=""))
+
+
 def score_link(link):
+    """
+    Donne un score simple aux liens internes importants.
+    Plus le score est élevé, plus le lien est intéressant à analyser.
+    """
 
     score = 0
-
     parsed = urlparse(link)
 
-    # privilégier les pages simples
     if not parsed.query:
         score += 2
 
-    # éviter les fichiers inutiles
-    if not link.lower().endswith((
-        ".pdf",
-        ".jpg",
-        ".png",
-        ".zip",
-        ".css",
-        ".js"
-    )):
+    if not link.lower().endswith(
+        (
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".zip",
+            ".css",
+            ".js",
+            ".svg",
+            ".webp",
+        )
+    ):
         score += 2
 
-    # éviter URLs trop longues
     if len(link) < 120:
         score += 1
 
-    # profondeur raisonnable
     path_parts = [p for p in parsed.path.split("/") if p]
 
     if 1 <= len(path_parts) <= 3:
         score += 2
 
+    keywords = [
+        "dashboard",
+        "account",
+        "profile",
+        "cart",
+        "checkout",
+        "orders",
+        "settings",
+        "contact",
+        "search",
+        "product",
+        "details",
+        "admin",
+    ]
+
+    value = link.lower()
+
+    if any(keyword in value for keyword in keywords):
+        score += 3
+
     return score
 
-def crawl_authenticated_pages(url, login_email=None, login_password=None, max_pages=20):
-    """
-    Analyse authentifiée avec connexion manuelle assistée.
 
-    Pourquoi ce mode ?
-    - Certains sites comme Glovo, Facebook, Google, etc. n'affichent pas
-      directement les champs email/password.
-    - Ils utilisent souvent des popups, OAuth, captcha, double authentification
-      ou protection anti-bot.
-    - Donc Selenium ouvre le site, puis l'utilisateur se connecte manuellement.
-    - Après l'attente, le crawler récupère le HTML de la session connectée.
+def should_ignore_url(url):
+    """
+    Ignore les liens inutiles ou dangereux pour une session connectée.
+    """
+
+    value = url.lower()
+
+    ignored_keywords = [
+        "logout",
+        "signout",
+        "deconnexion",
+        "déconnexion",
+        "delete",
+        "remove-account",
+    ]
+
+    if any(keyword in value for keyword in ignored_keywords):
+        return True
+
+    ignored_extensions = (
+        ".pdf",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".zip",
+        ".css",
+        ".js",
+        ".svg",
+        ".webp",
+    )
+
+    if value.endswith(ignored_extensions):
+        return True
+
+    return False
+
+
+def crawl_authenticated_pages(
+    url, analysis_scope="single_page", max_pages=None, wait_seconds=60
+):
+    """
+    Analyse authentifiée avec connexion manuelle.
+
+    Principe :
+    1. Selenium ouvre Chrome.
+    2. L'utilisateur se connecte lui-même manuellement.
+    3. Le système attend quelques secondes.
+    4. Le HTML de la page connectée est récupéré.
+    5. Si le scope est full_site, quelques liens internes connectés sont explorés.
 
     Sécurité :
-    - Les identifiants ne sont pas sauvegardés.
-    - Les identifiants ne sont pas envoyés à Gemini.
-    - Les identifiants ne sont pas affichés dans les logs.
+    - Aucun email n'est demandé dans l'interface.
+    - Aucun mot de passe n'est envoyé au backend.
+    - Aucun identifiant n'est stocké.
     """
 
     driver = None
+
+    if max_pages is None:
+        if analysis_scope == "full_site":
+            max_pages = 12
+        else:
+            max_pages = 1
 
     try:
         chrome_options = Options()
@@ -69,104 +146,96 @@ def crawl_authenticated_pages(url, login_email=None, login_password=None, max_pa
         driver = webdriver.Chrome(options=chrome_options)
         driver.implicitly_wait(5)
 
-        # ==================================================
-        # 1. OUVRIR LE SITE
-        # ==================================================
-
         driver.get(url)
 
+        print("\n==================== ANALYSE AVEC CONNEXION ====================")
+        print("[INFO] Une fenêtre Chrome est ouverte.")
+        print("[INFO] Connectez-vous manuellement dans Chrome.")
         print(
-            "[INFO] Connexion manuelle : vous avez 60 secondes pour vous connecter."
+            f"[INFO] Le système attend {wait_seconds} secondes avant de récupérer la page."
         )
+        print("================================================================\n")
 
-        # L'utilisateur fait le login manuellement dans la fenêtre Chrome.
-        time.sleep(60)
-
-        # ==================================================
-        # 2. RÉCUPÉRER LA PAGE APRÈS CONNEXION
-        # ==================================================
+        time.sleep(wait_seconds)
 
         html = driver.page_source
 
         if not html:
-           return {
-              "success": False,
-               "pages": [],
-               "error": "HTML vide après tentative de connexion"
+            return {
+                "success": False,
+                "pages": [],
+                "error": "HTML vide après la connexion manuelle.",
             }
 
+        current_url = driver.current_url
         parsed_data = parse_html(html)
 
-        pages = [{
-            "url": driver.current_url,
-            "html": html,
-            "parsed_data": parsed_data,
-            "source": "authenticated_manual_login"
-        }]
+        pages = [
+            {
+                "url": current_url,
+                "html": html,
+                "parsed_data": parsed_data,
+                "source": "authenticated_manual_login",
+                "link_text": "",
+                "depth": 0,
+            }
+        ]
 
-        print("[INFO] Page connectée récupérée :", driver.current_url)
+        print("[INFO] Page connectée récupérée :", current_url)
 
-        # ==================================================
-        # 3. EXTRAIRE DES LIENS INTERNES APRÈS CONNEXION
-        # ==================================================
-
-
+        if max_pages <= 1:
+            return {
+                "success": True,
+                "pages": pages,
+                "error": None,
+            }
 
         soup = BeautifulSoup(html, "html.parser")
         links = soup.find_all("a", href=True)
 
-        visited = set()
-        visited.add(driver.current_url)
-
-        base_domain = urlparse(driver.current_url).netloc
+        visited = {normalize_url_without_fragment(current_url)}
+        base_domain = urlparse(current_url).netloc
 
         internal_links = []
 
         for link in links:
             href = link.get("href")
+            text = link.get_text(strip=True)
 
             if not href:
                 continue
 
-            next_url = urljoin(driver.current_url, href)
+            next_url = urljoin(current_url, href)
+            next_url = normalize_url_without_fragment(next_url)
+
             parsed_next = urlparse(next_url)
 
-            # Garder seulement les liens du même domaine
             if parsed_next.netloc != base_domain:
                 continue
 
-            # Éviter les ancres, logout, fichiers inutiles
-            if "#" in next_url:
+            if should_ignore_url(next_url):
                 continue
 
-            if any(word in next_url.lower() for word in [
-                "logout",
-                "signout",
-                "facebook",
-                "instagram",
-                "twitter",
-                "linkedin",
-                "youtube"
-            ]):
+            if next_url in visited:
                 continue
 
-            if next_url not in visited:
-                internal_links.append(next_url)
-        
+            internal_links.append(
+                {
+                    "url": next_url,
+                    "text": text,
+                }
+            )
 
         internal_links = sorted(
-           internal_links,
-           key=score_link,
-           reverse=True
+            internal_links,
+            key=lambda item: score_link(item["url"]),
+            reverse=True,
         )
-        # Limiter le nombre de pages pour éviter une analyse trop longue
-        internal_links = internal_links[:max_pages - 1]
 
-        # ==================================================
-        # 4. VISITER QUELQUES PAGES CONNECTÉES
-        # ==================================================
+        internal_links = internal_links[: max_pages - 1]
 
-        for next_url in internal_links:
+        for link in internal_links:
+            next_url = link["url"]
 
             try:
                 driver.get(next_url)
@@ -175,21 +244,29 @@ def crawl_authenticated_pages(url, login_email=None, login_password=None, max_pa
                 page_html = driver.page_source
 
                 if not page_html:
-                   print("[WARNING] HTML vide pour la page :", next_url)
-                   continue
+                    print("[WARNING] HTML vide pour la page :", next_url)
+                    continue
 
                 page_parsed = parse_html(page_html)
+                final_url = normalize_url_without_fragment(driver.current_url)
 
-                pages.append({
-                    "url": driver.current_url,
-                    "html": page_html,
-                    "parsed_data": page_parsed,
-                    "source": "authenticated_internal_link"
-                })
+                if final_url in visited:
+                    continue
 
-                visited.add(driver.current_url)
+                pages.append(
+                    {
+                        "url": final_url,
+                        "html": page_html,
+                        "parsed_data": page_parsed,
+                        "source": "authenticated_internal_link",
+                        "link_text": link.get("text", ""),
+                        "depth": 1,
+                    }
+                )
 
-                print("[INFO] Page connectée explorée :", driver.current_url)
+                visited.add(final_url)
+
+                print("[INFO] Page connectée explorée :", final_url)
 
                 if len(pages) >= max_pages:
                     break
@@ -201,18 +278,16 @@ def crawl_authenticated_pages(url, login_email=None, login_password=None, max_pa
         return {
             "success": True,
             "pages": pages,
-            "error": None
+            "error": None,
         }
 
     except Exception as e:
-
         return {
             "success": False,
             "pages": [],
-            "error": str(e)
+            "error": str(e),
         }
 
     finally:
-
         if driver:
             driver.quit()

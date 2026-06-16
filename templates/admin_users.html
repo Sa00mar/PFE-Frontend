@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des utilisateurs{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+    <h1 class="h3 fw-bold text-dark">Gestion des utilisateurs</h1>
+    <p class="text-muted">
+        Espace administrateur pour gérer les comptes utilisateurs de TestFlow.
+    </p>
+</div>
+
+<div class="content-area pt-2">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} rounded-3 shadow-sm">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h5 class="fw-bold mb-1">Liste des utilisateurs</h5>
+                <small class="text-muted">
+                    Nombre total : {{ users|length }}
+                </small>
+            </div>
+
+            <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-primary rounded-3">
+                Dashboard admin
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Utilisateur</th>
+                        <th>Email</th>
+                        <th>Rôle</th>
+                        <th>Statut</th>
+                        <th>Analyses</th>
+                        <th>Tests</th>
+                        <th>Exécutions</th>
+                        <th>Créé le</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+
+                        <td class="fw-semibold">
+                            {{ user.username }}
+                        </td>
+
+                        <td>{{ user.email }}</td>
+
+                        <td>
+                            <span
+                                class="badge {% if user.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ user.role }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Actif</span>
+                            {% else %}
+                            <span class="badge bg-danger">Désactivé</span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ user.total_analyses }}</td>
+                        <td>{{ user.total_tests }}</td>
+                        <td>{{ user.total_executions }}</td>
+
+                        <td>
+                            {% if user.created_at %}
+                            {{ user.created_at.strftime("%Y-%m-%d") }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end">
+
+                            <form method="POST" action="{{ url_for('main.admin_change_user_role', user_id=user.id) }}"
+                                class="d-inline-block me-2">
+
+                                <select name="role" class="form-select form-select-sm d-inline-block"
+                                    style="width: 100px;" onchange="this.form.submit()" {% if
+                                    user.id==session.get('user_id') %}disabled{% endif %}>
+
+                                    <option value="user" {% if user.role=='user' %}selected{% endif %}>user</option>
+                                    <option value="admin" {% if user.role=='admin' %}selected{% endif %}>admin</option>
+
+                                </select>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('main.admin_toggle_user_status', user_id=user.id) }}"
+                                class="d-inline-block">
+
+                                {% if user.id == session.get('user_id') %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" disabled>
+                                    Compte actuel
+                                </button>
+                                {% elif user.is_active %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-3">
+                                    Désactiver
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-success rounded-3">
+                                    Réactiver
+                                </button>
+                                {% endif %}
+
+                            </form>
+
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            Aucun utilisateur trouvé.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -68,34 +68,12 @@
                     </div>
 
                     <small class="text-muted">
-                        Activez cette option si la page nécessite un compte de test.
+                        Activez cette option si la page nécessite une connexion.
+                        Une fenêtre Chrome s’ouvrira pour vous permettre de vous connecter manuellement.
                     </small>
                 </div>
 
                 <!-- Champs connexion -->
-                <div id="authFields" class="d-none mb-4">
-                    <div class="row g-3">
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">
-                                Email de test
-                            </label>
-
-                            <input type="email" class="form-control" id="loginEmail" name="login_email"
-                                placeholder="test@example.com" autocomplete="username" disabled>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">
-                                Mot de passe de test
-                            </label>
-
-                            <input type="password" class="form-control" id="loginPassword" name="login_password"
-                                placeholder="Mot de passe" autocomplete="current-password" disabled>
-                        </div>
-
-                    </div>
-                </div>
 
                 <!-- SCOPE -->
                 <div class="mb-4">
@@ -195,44 +173,7 @@
 
 <script src="{{ url_for('static', filename='js/new_test.js') }}"></script>
 
-<script>
 
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const authRequired = document.getElementById("authRequired");
-
-        const authFields = document.getElementById("authFields");
-
-        const loginEmail = document.getElementById("loginEmail");
-
-        const loginPassword = document.getElementById("loginPassword");
-
-        authRequired.addEventListener("change", function () {
-
-            if (authRequired.checked) {
-
-                authFields.classList.remove("d-none");
-
-                loginEmail.disabled = false;
-
-                loginPassword.disabled = false;
-
-            } else {
-
-                authFields.classList.add("d-none");
-
-                loginEmail.disabled = true;
-
-                loginPassword.disabled = true;
-
-                loginEmail.value = "";
-
-                loginPassword.value = "";
-            }
-        });
-    });
-
-</script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const scopeSelect = document.getElementById("analysis_scope");

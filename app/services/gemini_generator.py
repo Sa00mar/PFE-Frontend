@@ -427,6 +427,37 @@ def filter_external_platform_tests(test_cases, base_url, relevant_data):
     return filtered_tests
 
 
+def filter_only_real_external_url_tests(test_cases, base_url):
+    """
+    Supprime uniquement les tests qui ciblent vraiment une URL externe.
+
+    Utilisé surtout en analyse authentifiée :
+    - on garde les pages internes récupérées après connexion
+    - on supprime seulement les vrais tests vers des domaines externes
+    """
+
+    filtered_tests = []
+
+    for test in test_cases:
+        test_text = json.dumps(test, ensure_ascii=False).lower()
+
+        urls = extract_urls_from_text(test_text)
+
+        contains_external_url = any(
+            is_external_url(candidate_url, base_url) for candidate_url in urls
+        )
+
+        if contains_external_url:
+            print(
+                "[FILTER AUTH] Test avec vraie URL externe supprimé :", test.get("name")
+            )
+            continue
+
+        filtered_tests.append(test)
+
+    return filtered_tests
+
+
 def generate_tests_with_gemini(
     page_type,
     relevant_data,
@@ -872,8 +903,35 @@ Chaque objet doit contenir obligatoirement :
 
         content = response.text.strip()
         content = clean_json_response(content)
+        try:
+            test_cases = json.loads(content)
+        except json.JSONDecodeError as json_error:
+            print(
+                "[WARNING] JSON Gemini invalide, deuxième tentative :", str(json_error)
+            )
 
-        test_cases = json.loads(content)
+            retry_prompt = (
+                prompt
+                + """
+            IMPORTANT :
+            La réponse précédente n'était pas un JSON valide.
+            Retourne uniquement un tableau JSON valide.
+            Aucun texte avant.
+            Aucun texte après.
+            Pas de markdown.
+            Pas de commentaire.
+            Vérifie bien les virgules entre les objets JSON.
+            """
+            )
+
+            retry_response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=retry_prompt,
+            )
+            retry_content = retry_response.text.strip()
+            retry_content = clean_json_response(retry_content)
+
+            test_cases = json.loads(retry_content)
 
         if not isinstance(test_cases, list):
             raise ValueError("La réponse Gemini n'est pas une liste JSON.")
@@ -929,9 +987,22 @@ Chaque objet doit contenir obligatoirement :
 
         normalized_tests = enrich_missing_tests(normalized_tests, semantic_actions)
 
-        normalized_tests = filter_external_platform_tests(
-            normalized_tests, url, relevant_data
+        is_authenticated_analysis = any(
+            str(page.get("source", "")).startswith("authenticated")
+            for page in relevant_data.get("pages", [])
         )
+
+        if is_authenticated_analysis:
+            normalized_tests = filter_only_real_external_url_tests(
+                normalized_tests,
+                url,
+            )
+        else:
+            normalized_tests = filter_external_platform_tests(
+                normalized_tests,
+                url,
+                relevant_data,
+            )
 
         normalized_tests = enrich_security_and_seo_tests(
             normalized_tests, relevant_data, url, test_types

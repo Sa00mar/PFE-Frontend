@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+    <h1 class="h3 fw-bold text-dark">Dashboard Admin</h1>
+    <p class="text-muted">
+        Vue globale sur l’activité de tous les utilisateurs de TestFlow.
+    </p>
+</div>
+
+<div class="content-area pt-2">
+
+    <!-- ACTIONS -->
+    <div class="d-flex justify-content-end mb-4">
+        <a href="{{ url_for('main.admin_users') }}" class="btn btn-outline-primary rounded-3">
+            <i class="fas fa-users me-2"></i>
+            Gestion des utilisateurs
+        </a>
+    </div>
+
+    <!-- STATS PRINCIPALES -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="admin-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold mb-0">{{ stats.total_users }}</h3>
+                        <p class="text-muted mb-0">Utilisateurs total</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="admin-icon bg-success bg-opacity-10 text-success">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold mb-0">{{ stats.active_users }}</h3>
+                        <p class="text-muted mb-0">Utilisateurs actifs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="admin-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold mb-0">{{ stats.total_admins }}</h3>
+                        <p class="text-muted mb-0">Administrateurs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- STATS TESTFLOW -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 text-center">
+                <h3 class="fw-bold text-primary mb-1">{{ stats.total_analyses }}</h3>
+                <p class="text-muted mb-0">Analyses lancées</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 text-center">
+                <h3 class="fw-bold text-info mb-1">{{ stats.total_tests }}</h3>
+                <p class="text-muted mb-0">Tests générés</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 text-center">
+                <h3 class="fw-bold text-warning mb-1">{{ stats.total_executions }}</h3>
+                <p class="text-muted mb-0">Tests exécutés</p>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 text-center">
+                <h3 class="fw-bold text-success mb-1">{{ stats.success_rate }}%</h3>
+                <p class="text-muted mb-0">Taux de réussite global</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RESULTATS -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+
+        <h5 class="fw-bold mb-4">Répartition globale des résultats</h5>
+
+        <div class="row g-4">
+
+            <div class="col-md-4">
+                <div class="result-box text-center p-4 rounded-4">
+                    <h2 class="fw-bold text-success mb-1">{{ stats.passed }}</h2>
+                    <p class="mb-0 fw-semibold">PASS</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="result-box text-center p-4 rounded-4">
+                    <h2 class="fw-bold text-danger mb-1">{{ stats.failed }}</h2>
+                    <p class="mb-0 fw-semibold">FAIL</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="result-box text-center p-4 rounded-4">
+                    <h2 class="fw-bold text-warning mb-1">{{ stats.pending }}</h2>
+                    <p class="mb-0 fw-semibold">PENDING</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+
+        <h5 class="fw-bold mb-3">Rôle du dashboard admin</h5>
+
+        <p class="text-muted mb-0">
+            Ce tableau de bord permet à l’administrateur de superviser l’activité globale
+            de la plateforme : utilisateurs, analyses lancées, tests générés, exécutions
+            et taux de réussite global. Contrairement au dashboard utilisateur, cette vue
+            regroupe les données de tous les comptes.
+        </p>
+
+    </div>
+
+</div>
+
+<style>
+    .admin-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+    }
+
+    .result-box {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+    }
+</style>
+
+{% endblock %}

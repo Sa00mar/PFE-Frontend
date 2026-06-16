@@ -28,8 +28,10 @@ def get_user_by_login(email, password):
 
     cur.execute(
         """
-        SELECT * FROM users
-        WHERE email=%s AND password=%s
+        SELECT id, username, email, role, is_active
+        FROM users
+        WHERE email = %s
+        AND password = %s
     """,
         (email, password),
     )
@@ -737,7 +739,7 @@ def get_url_execution_history(user_id, reference_analysis_id):
             }
         )
 
-    return (url,)
+    return url, history
 
 
 def get_user_by_id(user_id):
@@ -910,3 +912,161 @@ def get_success_rate_by_url(user_id, limit=5):
         )
 
     return url_rates
+
+
+# =========================================================
+# ADMIN - USERS MANAGEMENT
+# =========================================================
+
+
+def get_all_users():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT
+            u.id,
+            u.username,
+            u.email,
+            u.role,
+            u.is_active,
+            u.created_at,
+            COUNT(DISTINCT a.id) AS total_analyses,
+            COUNT(DISTINCT t.id) AS total_tests,
+            COUNT(DISTINCT r.id) AS total_executions
+        FROM users u
+        LEFT JOIN analyses a ON a.user_id = u.id
+        LEFT JOIN tests t ON t.analysis_id = a.id
+        LEFT JOIN results r ON r.test_id = t.id
+        GROUP BY
+            u.id,
+            u.username,
+            u.email,
+            u.role,
+            u.is_active,
+            u.created_at
+        ORDER BY u.id ASC
+        """
+    )
+
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    users = []
+
+    for row in rows:
+        users.append(
+            {
+                "id": row[0],
+                "username": row[1],
+                "email": row[2],
+                "role": row[3],
+                "is_active": row[4],
+                "created_at": row[5],
+                "total_analyses": row[6],
+                "total_tests": row[7],
+                "total_executions": row[8],
+            }
+        )
+
+    return users
+
+
+def update_user_status(user_id, is_active):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE users
+        SET is_active = %s
+        WHERE id = %s
+        """,
+        (is_active, user_id),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def update_user_role(user_id, role):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE users
+        SET role = %s
+        WHERE id = %s
+        """,
+        (role, user_id),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_admin_dashboard_stats():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM users")
+    total_users = cur.fetchone()[0] or 0
+
+    cur.execute("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
+    active_users = cur.fetchone()[0] or 0
+
+    cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+    total_admins = cur.fetchone()[0] or 0
+
+    cur.execute("SELECT COUNT(*) FROM analyses")
+    total_analyses = cur.fetchone()[0] or 0
+
+    cur.execute("SELECT COUNT(*) FROM tests")
+    total_tests = cur.fetchone()[0] or 0
+
+    cur.execute(
+        """
+        SELECT
+            COUNT(*) AS total_executions,
+            COUNT(*) FILTER (WHERE result_status = 'passed') AS passed,
+            COUNT(*) FILTER (WHERE result_status = 'failed') AS failed,
+            COUNT(*) FILTER (WHERE result_status = 'pending') AS pending
+        FROM results
+        """
+    )
+
+    row = cur.fetchone()
+
+    total_executions = row[0] or 0
+    passed = row[1] or 0
+    failed = row[2] or 0
+    pending = row[3] or 0
+
+    pass_fail_total = passed + failed
+
+    if pass_fail_total > 0:
+        success_rate = round((passed / pass_fail_total) * 100, 1)
+    else:
+        success_rate = 0
+
+    cur.close()
+    conn.close()
+
+    return {
+        "total_users": total_users,
+        "active_users": active_users,
+        "total_admins": total_admins,
+        "total_analyses": total_analyses,
+        "total_tests": total_tests,
+        "total_executions": total_executions,
+        "passed": passed,
+        "failed": failed,
+        "pending": pending,
+        "success_rate": success_rate,
+    }

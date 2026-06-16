@@ -32,6 +32,10 @@ from app.models import (
     update_user_profile,
     get_dashboard_stats,
     get_success_rate_by_url,
+    get_all_users,
+    update_user_status,
+    update_user_role,
+    get_admin_dashboard_stats,
 )
 
 from app.services.page_fetcher import fetch_page_html
@@ -45,6 +49,24 @@ from app.services.report_generator import generate_pdf_report
 main = Blueprint("main", __name__)
 
 
+def is_admin():
+    return "user_id" in session and session.get("role") == "admin"
+
+
+def require_admin():
+    if "user_id" not in session:
+        return redirect(url_for("main.login"))
+
+    if session.get("role") != "admin":
+        flash(
+            "Accès réservé à l'administrateur. Si votre rôle vient d’être modifié, reconnectez-vous.",
+            "danger",
+        )
+        return redirect(url_for("main.home"))
+
+    return None
+
+
 # =========================================================
 # HOME
 # =========================================================
@@ -53,6 +75,106 @@ main = Blueprint("main", __name__)
 @main.route("/")
 def index():
     return redirect(url_for("main.login"))
+
+
+# =========================================================
+# ADMIN DASHBOARD
+# =========================================================
+
+
+@main.route("/admin/dashboard")
+def admin_dashboard():
+    access_error = require_admin()
+
+    if access_error:
+        return access_error
+
+    stats = get_admin_dashboard_stats()
+
+    return render_template(
+        "admin_dashboard.html",
+        stats=stats,
+    )
+
+
+# =========================================================
+# ADMIN USERS
+# =========================================================
+
+
+@main.route("/admin/users")
+def admin_users():
+    access_error = require_admin()
+
+    if access_error:
+        return access_error
+
+    users = get_all_users()
+
+    return render_template(
+        "admin_users.html",
+        users=users,
+    )
+
+
+@main.route("/admin/users/<int:user_id>/toggle-status", methods=["POST"])
+def admin_toggle_user_status(user_id):
+    access_error = require_admin()
+
+    if access_error:
+        return access_error
+
+    current_user = get_user_by_id(user_id)
+
+    if not current_user:
+        return "Utilisateur introuvable", 404
+
+    if user_id == session.get("user_id"):
+        flash("Vous ne pouvez pas désactiver votre propre compte.", "danger")
+        return redirect(url_for("main.admin_users"))
+
+    users = get_all_users()
+    selected_user = None
+
+    for user in users:
+        if user["id"] == user_id:
+            selected_user = user
+            break
+
+    if not selected_user:
+        return "Utilisateur introuvable", 404
+
+    new_status = not selected_user["is_active"]
+
+    update_user_status(user_id, new_status)
+
+    flash("Statut utilisateur mis à jour avec succès.", "success")
+
+    return redirect(url_for("main.admin_users"))
+
+
+@main.route("/admin/users/<int:user_id>/change-role", methods=["POST"])
+def admin_change_user_role(user_id):
+    access_error = require_admin()
+
+    if access_error:
+        return access_error
+
+    if user_id == session.get("user_id"):
+        flash("Vous ne pouvez pas modifier votre propre rôle.", "danger")
+        return redirect(url_for("main.admin_users"))
+
+    new_role = request.form.get("role")
+
+    if new_role not in ["user", "admin"]:
+        flash("Rôle invalide.", "danger")
+        return redirect(url_for("main.admin_users"))
+
+    update_user_role(user_id, new_role)
+
+    flash("Rôle utilisateur mis à jour avec succès.", "success")
+
+    return redirect(url_for("main.admin_users"))
 
 
 # =========================================================
@@ -72,8 +194,15 @@ def login():
         user = get_user_by_login(email, password)
 
         if user:
+            if not user[4]:
+                error = (
+                    "Votre compte est désactivé. Veuillez contacter l'administrateur."
+                )
+                return render_template("login.html", error=error)
             session["user_id"] = user[0]
             session["username"] = user[1]
+            session["email"] = user[2]
+            session["role"] = user[3]
 
             return redirect(url_for("main.home"))
 
@@ -171,9 +300,6 @@ def new_test():
 
         auth_required = request.form.get("auth_required")
 
-        login_email = request.form.get("login_email")
-        login_password = request.form.get("login_password")
-
         # Nouveaux champs : scope + types de tests
         analysis_scope = request.form.get("analysis_scope", "single_page")
         target_feature = request.form.get("target_feature", "").strip()
@@ -209,8 +335,6 @@ def new_test():
                 analysis_id,
                 url,
                 auth_required,
-                login_email,
-                login_password,
                 analysis_scope,
                 target_feature,
                 test_types,
@@ -635,8 +759,6 @@ def process_analysis(
     analysis_id,
     url,
     auth_required=None,
-    login_email=None,
-    login_password=None,
     analysis_scope="single_page",
     target_feature="",
     test_types=None,
@@ -659,7 +781,10 @@ def process_analysis(
 
             print("\n[INFO] Analyse authentifiée activée")
 
-            crawl_result = crawl_authenticated_pages(url, login_email, login_password)
+            crawl_result = crawl_authenticated_pages(
+                url=url,
+                analysis_scope=analysis_scope,
+            )
 
         # ==================================================
         # MODE PUBLIC

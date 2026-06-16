@@ -9,26 +9,29 @@
     </div>
 
     <ul class="sidebar-menu">
+
+        {% if session.get("role") == "admin" %}
+
+        <li class="sidebar-section-title">
+            Administration
+        </li>
+
         <li>
-            <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">
-                <i class="fas fa-home"></i>
-                Accueil
+            <a href="{{ url_for('main.admin_dashboard') }}"
+                class="{% if request.endpoint == 'main.admin_dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>
+                Dashboard Admin
             </a>
         </li>
+
         <li>
-            <a href="{{ url_for('main.new_test') }}"
-                class="{% if request.endpoint == 'main.new_test' %}active{% endif %}">
-                <i class="fas fa-plus-circle"></i>
-                Nouveau Test
+            <a href="{{ url_for('main.admin_users') }}"
+                class="{% if request.endpoint == 'main.admin_users' %}active{% endif %}">
+                <i class="fas fa-users-cog"></i>
+                Utilisateurs
             </a>
         </li>
-        <li>
-            <a href="{{ url_for('main.my_tests') }}"
-                class="{% if request.endpoint == 'main.my_tests' %}active{% endif %}">
-                <i class="fas fa-tasks"></i>
-                Mes Tests
-            </a>
-        </li>
+
         <li>
             <a href="{{ url_for('main.settings') }}"
                 class="{% if request.endpoint == 'main.settings' %}active{% endif %}">
@@ -36,6 +39,42 @@
                 Paramètres
             </a>
         </li>
+
+        {% else %}
+
+        <li>
+            <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                Accueil
+            </a>
+        </li>
+
+        <li>
+            <a href="{{ url_for('main.new_test') }}"
+                class="{% if request.endpoint == 'main.new_test' %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i>
+                Nouveau Test
+            </a>
+        </li>
+
+        <li>
+            <a href="{{ url_for('main.my_tests') }}"
+                class="{% if request.endpoint == 'main.my_tests' %}active{% endif %}">
+                <i class="fas fa-tasks"></i>
+                Mes Tests
+            </a>
+        </li>
+
+        <li>
+            <a href="{{ url_for('main.settings') }}"
+                class="{% if request.endpoint == 'main.settings' %}active{% endif %}">
+                <i class="fas fa-user-cog"></i>
+                Paramètres
+            </a>
+        </li>
+
+        {% endif %}
+
     </ul>
 
     <div class="user-section">
@@ -45,12 +84,22 @@
             </div>
             <div class="user-name">
                 <p id="sidebarUserName">{{ session.get("username", "Utilisateur") }}</p>
+
+                <div class="role-badge-sidebar">
+                    {% if session.get("role") == "admin" %}
+                    Administrateur
+                    {% else %}
+                    Utilisateur
+                    {% endif %}
+                </div>
+
                 <div class="status-indicator">
                     <span class="status-dot"></span>
-                    <span>En ligne</span>
+                    <span>Connecté</span>
                 </div>
             </div>
         </div>
+
         <form method="POST" action="{{ url_for('main.logout') }}">
             <button type="submit" class="logout-btn">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion

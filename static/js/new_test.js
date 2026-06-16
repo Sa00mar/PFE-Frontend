@@ -19,7 +19,7 @@ function validateUrlBtn(btn) {
     btn.disabled = true;
 
     const formData = new FormData();
-    formData.append('url', urlInput.value);
+    formData.append('target_url', urlInput.value);
 
     fetch('/validate_url', {
         method: 'POST',
